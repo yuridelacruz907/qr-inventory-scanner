@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inventory QR Scanner</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://apis.google.com/js/api.js"></script> <!-- Google API -->
 </head>
 <body>
 <h2>Inventory QR Scanner</h2>
@@ -20,41 +21,78 @@
 <div id="reader" style="width:300px;"></div>
 
 <script>
-const SHEET_ID = "12Nq5pKAlQkTmWOi_pjD0Tp2M6tEP-QXYlaEcEG2xciA";
-const API_KEY = "AIzaSyDIP4uZl0kymt73zd2uDpqBee1JivmMsBY";
+// --- CONFIGURATION ---
+const CLIENT_ID = "408954433502-a0o27nhvbn9pla8vapplva0cp4irasmm.apps.googleusercontent.com"; // Your OAuth Client ID
+const SHEET_ID = "12Nq5pKAlQkTmWOi_pjD0Tp2M6tEP-QXYlaEcEG2xciA"; // Your Sheet ID
 
+let gapiInited = false;
+let scanning = false; // Prevent duplicate scans
+
+// --- GOOGLE API INIT ---
+function gapiLoaded() {
+    gapi.load('client:auth2', initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+    await gapi.client.init({
+        clientId: CLIENT_ID,
+        discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+        scope: "https://www.googleapis.com/auth/spreadsheets"
+    });
+    gapiInited = true;
+}
+
+// Prompt Google sign-in
+async function signIn() {
+    await gapi.auth2.getAuthInstance().signIn();
+}
+
+// Initialize API
+gapiLoaded();
+signIn();
+
+// --- LOG TO SHEET ---
 async function logToSheet(itemData, transaction) {
-    // Prepare request payload
     const date = new Date().toISOString();
     const [itemNo, description] = itemData.split("|");
     const values = [[date, itemNo || "", description || "", transaction, ""]];
 
-    const body = { values };
-
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A:E:append?valueInputOption=USER_ENTERED&key=${API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    }).then(res => res.json())
-      .then(data => console.log("Logged:", data))
-      .catch(err => console.error(err));
+    try {
+        const response = await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: SHEET_ID,
+            range: "A:E",
+            valueInputOption: "USER_ENTERED",
+            resource: { values }
+        });
+        console.log("Logged:", response);
+    } catch (err) {
+        console.error("Error logging to Sheet:", err);
+    }
 }
 
+// --- QR SCAN HANDLER ---
 function onScanSuccess(decodedText, decodedResult) {
+    if(scanning) return; // Prevent duplicate logs
+    scanning = true;
+
     const transaction = document.getElementById("transaction").value;
     logToSheet(decodedText, transaction);
 
     const msg = document.createElement('p');
     msg.textContent = `Item logged: ${decodedText} [${transaction}]`;
     document.body.appendChild(msg);
-    setTimeout(() => msg.remove(), 2000);
+
+    setTimeout(() => {
+        msg.remove();
+        scanning = false; // Allow next scan
+    }, 2000); // 2-second delay
 }
 
-// Continuous scanning
+// --- INIT QR SCANNER ---
 const html5QrcodeScanner = new Html5QrcodeScanner(
-  "reader",
-  { fps: 10, qrbox: 250 },
-  false
+    "reader",
+    { fps: 10, qrbox: 250 },
+    false
 );
 html5QrcodeScanner.render(onScanSuccess);
 </script>
