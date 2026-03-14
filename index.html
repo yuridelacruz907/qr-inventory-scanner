@@ -59,7 +59,7 @@
       const date = new Date().toISOString();
 
       gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: 'YOUR_SHEET_ID', // replace with your sheet ID
+        spreadsheetId: '12Nq5pKAlQkTmWOi_pjD0Tp2M6tEP-QXYlaEcEG2xciA', // replace with your sheet ID
         range: 'TRANSACTION_LOG!A:D',
         valueInputOption: 'USER_ENTERED',
         resource: { values: [[date, itemNo, description, transaction]] }
