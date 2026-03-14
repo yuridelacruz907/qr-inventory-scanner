@@ -33,10 +33,11 @@
 <p id="confirmation"></p>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwx-0WpkRT5ZOnZKdLb7L71Ls1bK92fsHwDUkTUrV0gotF7Wj9kc1yKGKX4jaIFQbLA/exec";
+const WEBAPP_URL = "YOUR_DEPLOYED_WEBAPP_URL_HERE"; // Replace with your Web App URL
 let lastScanned = "";
 let scanner;
 
+// Start scanner on button click (required for mobile camera permission)
 document.getElementById("startScanner").addEventListener("click", () => {
   scanner = new Html5Qrcode("reader");
   scanner.start(
@@ -54,6 +55,7 @@ document.getElementById("startScanner").addEventListener("click", () => {
   ).catch(err => alert("Camera access denied or unavailable."));
 });
 
+// Add scanned QR to Google Sheet
 document.getElementById("addBtn").addEventListener("click", async () => {
   if (!lastScanned) return;
 
