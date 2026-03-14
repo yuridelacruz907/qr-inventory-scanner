@@ -34,9 +34,9 @@
     let gapiInited = false;
     let isSignedIn = false;
 
-    // Initialize gapi client
+    // Initialize GAPI client
     function initClient() {
-      gapi.load('client:auth2', async function() {
+      gapi.load('client:auth2', async () => {
         await gapi.auth2.init({
           client_id: CLIENT_ID,
           scope: 'https://www.googleapis.com/auth/spreadsheets'
@@ -46,18 +46,29 @@
       });
     }
 
-    // Sign in user
-    async function signIn() {
-      if (!gapiInited) return alert("GAPI not initialized yet");
-      const user = await gapi.auth2.getAuthInstance().signIn();
-      isSignedIn = true;
-      console.log("Signed in as:", user.getBasicProfile().getEmail());
-      // Load Sheets API
-      await gapi.client.init({
-        apiKey: API_KEY,
-        discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"]
-      });
-      console.log("Sheets API loaded");
+    async function ensureSignedIn() {
+      if (!gapiInited) {
+        alert("Please wait a moment, GAPI is still initializing...");
+        return false;
+      }
+
+      if (!isSignedIn) {
+        try {
+          const user = await gapi.auth2.getAuthInstance().signIn();
+          isSignedIn = true;
+          console.log("Signed in as:", user.getBasicProfile().getEmail());
+          await gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"]
+          });
+          console.log("Sheets API loaded");
+        } catch (err) {
+          console.error(err);
+          alert("Google Sign-In failed");
+          return false;
+        }
+      }
+      return true;
     }
 
     function onScanSuccess(decodedText, decodedResult) {
@@ -69,9 +80,9 @@
 
     document.getElementById("addBtn").addEventListener("click", async () => {
       if (!lastScanned) return;
-      if (!isSignedIn) {
-        await signIn();
-      }
+
+      const ready = await ensureSignedIn();
+      if (!ready) return;
 
       const transaction = document.getElementById("transaction").value;
       const [itemNo, description] = lastScanned.split("|");
