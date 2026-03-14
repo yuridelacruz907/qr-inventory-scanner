@@ -4,12 +4,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QR Scanner with Add Button</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <script src="https://apis.google.com/js/api.js"></script>
+  <style>
+    body { font-family: Arial; text-align:center; }
+    #reader { width:300px; margin:auto; }
+    button { padding:12px 20px; font-size:16px; margin-top:10px; }
+    #confirmation { color:green; font-weight:bold; margin-top:10px; }
+  </style>
 </head>
 <body>
-  <h2>Property QR Scanner</h2>
+  <h2>Property Inventory QR Scanner</h2>
 
-  <label for="transaction">Transaction Type:</label>
+  <label>Transaction Type:</label>
   <select id="transaction">
     <option value="RECEIVED">RECEIVED</option>
     <option value="ISSUED" selected>ISSUED</option>
@@ -18,89 +23,47 @@
     <option value="RETURNED">RETURNED</option>
   </select>
 
-  <div id="reader" style="width:300px;"></div>
+  <div id="reader"></div>
 
   <p>Scanned QR: <span id="scanned">None</span></p>
   <button id="addBtn" disabled>Add to Google Sheet</button>
-
-  <p id="confirmation" style="color:green; font-weight:bold;"></p>
+  <p id="confirmation"></p>
 
   <script>
-    const CLIENT_ID = '408954433502-a0o27nhvbn9pla8vapplva0cp4irasmm.apps.googleusercontent.com';
-    const API_KEY = 'AIzaSyDIP4uZl0kymt73zd2uDpqBee1JivmMsBY';
-    const SHEET_ID = '12Nq5pKAlQkTmWOi_pjD0Tp2M6tEP-QXYlaEcEG2xciA';
-
+    const WEBAPP_URL = "PASTE_YOUR_WEB_APP_URL_HERE"; // Replace with your Apps Script Web App URL
     let lastScanned = "";
-    let gapiInited = false;
-    let isSignedIn = false;
 
-    // Initialize GAPI client
-    function initClient() {
-      gapi.load('client:auth2', async () => {
-        await gapi.auth2.init({
-          client_id: CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/spreadsheets'
-        });
-        gapiInited = true;
-        console.log("GAPI initialized");
-      });
-    }
-
-    async function ensureSignedIn() {
-      if (!gapiInited) {
-        alert("Please wait a moment, GAPI is still initializing...");
-        return false;
-      }
-
-      if (!isSignedIn) {
-        try {
-          const user = await gapi.auth2.getAuthInstance().signIn();
-          isSignedIn = true;
-          console.log("Signed in as:", user.getBasicProfile().getEmail());
-          await gapi.client.init({
-            apiKey: API_KEY,
-            discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"]
-          });
-          console.log("Sheets API loaded");
-        } catch (err) {
-          console.error(err);
-          alert("Google Sign-In failed");
-          return false;
-        }
-      }
-      return true;
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
+    // QR scan callback
+    function onScanSuccess(decodedText) {
       lastScanned = decodedText;
       document.getElementById("scanned").textContent = decodedText;
       document.getElementById("addBtn").disabled = false;
       document.getElementById("confirmation").textContent = "";
     }
 
+    // Add button handler
     document.getElementById("addBtn").addEventListener("click", async () => {
       if (!lastScanned) return;
 
-      const ready = await ensureSignedIn();
-      if (!ready) return;
-
       const transaction = document.getElementById("transaction").value;
       const [itemNo, description] = lastScanned.split("|");
-      const date = new Date().toISOString();
 
       try {
-        await gapi.client.sheets.spreadsheets.values.append({
-          spreadsheetId: SHEET_ID,
-          range: 'TRANSACTION_LOG!A:D',
-          valueInputOption: 'USER_ENTERED',
-          resource: { values: [[date, itemNo, description, transaction]] }
+        const res = await fetch(WEBAPP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemNo, description, transaction })
         });
 
-        document.getElementById("confirmation").textContent =
-          `✅ Transaction encoded: ${itemNo} | ${description} [${transaction}]`;
-        document.getElementById("addBtn").disabled = true;
-        document.getElementById("scanned").textContent = "None";
-        lastScanned = "";
+        if (res.ok) {
+          document.getElementById("confirmation").textContent =
+            `✅ Transaction encoded: ${itemNo} | ${description} [${transaction}]`;
+          document.getElementById("scanned").textContent = "None";
+          document.getElementById("addBtn").disabled = true;
+          lastScanned = "";
+        } else {
+          throw new Error("Failed to log transaction");
+        }
 
       } catch (err) {
         console.error(err);
@@ -115,8 +78,6 @@
       false
     );
     html5QrcodeScanner.render(onScanSuccess);
-
-    window.onload = initClient;
   </script>
 </body>
 </html>
