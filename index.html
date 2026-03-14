@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory QR Scanner</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+<h2>Inventory QR Scanner</h2>
+
+<label for="transaction">Transaction Type:</label>
+<select id="transaction">
+  <option value="RECEIVED">RECEIVED</option>
+  <option value="ISSUED" selected>ISSUED</option>
+  <option value="TRANSFERRED">TRANSFERRED</option>
+  <option value="INVENTORY COUNT">INVENTORY COUNT</option>
+  <option value="RETURNED">RETURNED</option>
+</select>
+
+<div id="reader" style="width:300px;"></div>
+
+<script>
+const SHEET_ID = "<YOUR_SHEET_ID>";
+const API_KEY = "<YOUR_API_KEY>";
+
+async function logToSheet(itemData, transaction) {
+    // Prepare request payload
+    const date = new Date().toISOString();
+    const [itemNo, description] = itemData.split("|");
+    const values = [[date, itemNo || "", description || "", transaction, ""]];
+
+    const body = { values };
+
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A:E:append?valueInputOption=USER_ENTERED&key=${API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    }).then(res => res.json())
+      .then(data => console.log("Logged:", data))
+      .catch(err => console.error(err));
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+    const transaction = document.getElementById("transaction").value;
+    logToSheet(decodedText, transaction);
+
+    const msg = document.createElement('p');
+    msg.textContent = `Item logged: ${decodedText} [${transaction}]`;
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2000);
+}
+
+// Continuous scanning
+const html5QrcodeScanner = new Html5QrcodeScanner(
+  "reader",
+  { fps: 10, qrbox: 250 },
+  false
+);
+html5QrcodeScanner.render(onScanSuccess);
+</script>
+</body>
+</html>
