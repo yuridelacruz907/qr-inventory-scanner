@@ -23,13 +23,16 @@
   <p>Scanned QR: <span id="scanned">None</span></p>
   <button id="addBtn" disabled>Add to Google Sheet</button>
 
+  <!-- Confirmation message -->
+  <p id="confirmation" style="color:green; font-weight:bold;"></p>
+
   <script>
     let lastScanned = "";
 
     function initClient() {
       gapi.load('client:auth2', function() {
         gapi.auth2.init({
-          client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+          client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com', // replace with your client ID
           scope: 'https://www.googleapis.com/auth/spreadsheets'
         });
       });
@@ -45,6 +48,7 @@
       lastScanned = decodedText;
       document.getElementById("scanned").textContent = decodedText;
       document.getElementById("addBtn").disabled = false; // enable Add button
+      document.getElementById("confirmation").textContent = ""; // clear previous confirmation
     }
 
     document.getElementById("addBtn").addEventListener("click", () => {
@@ -55,20 +59,24 @@
       const date = new Date().toISOString();
 
       gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: 'YOUR_SHEET_ID',
+        spreadsheetId: 'YOUR_SHEET_ID', // replace with your sheet ID
         range: 'TRANSACTION_LOG!A:D',
         valueInputOption: 'USER_ENTERED',
         resource: { values: [[date, itemNo, description, transaction]] }
       }).then(res => {
         console.log("Logged:", res);
-        alert("Logged to Google Sheets!");
+        document.getElementById("confirmation").textContent = 
+          `✅ Transaction encoded: ${itemNo} | ${description} [${transaction}]`;
         document.getElementById("addBtn").disabled = true;
         document.getElementById("scanned").textContent = "None";
         lastScanned = "";
-      }).catch(err => console.error(err));
+      }).catch(err => {
+        console.error(err);
+        document.getElementById("confirmation").textContent = "❌ Failed to log transaction!";
+      });
     });
 
-    // Initialize scanner
+    // Initialize QR scanner
     const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
     html5QrcodeScanner.render(onScanSuccess);
 
