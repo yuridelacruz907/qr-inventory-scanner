@@ -2,10 +2,10 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QR Scanner with Add Button</title>
+  <title>Property QR Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial; text-align:center; }
+    body { font-family: Arial; text-align:center; padding:20px; }
     #reader { width:300px; margin:auto; }
     button { padding:12px 20px; font-size:16px; margin-top:10px; }
     #confirmation { color:green; font-weight:bold; margin-top:10px; }
@@ -33,7 +33,6 @@
     const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxU6n60ms9nTFZmbpvC4i56N1EbMXPC0jlVX2v9eeEzrDvP-dTU26jdb9JoFO_kyFxQ/exec"; // Replace with your Apps Script Web App URL
     let lastScanned = "";
 
-    // QR scan callback
     function onScanSuccess(decodedText) {
       lastScanned = decodedText;
       document.getElementById("scanned").textContent = decodedText;
@@ -41,7 +40,6 @@
       document.getElementById("confirmation").textContent = "";
     }
 
-    // Add button handler
     document.getElementById("addBtn").addEventListener("click", async () => {
       if (!lastScanned) return;
 
@@ -64,7 +62,6 @@
         } else {
           throw new Error("Failed to log transaction");
         }
-
       } catch (err) {
         console.error(err);
         document.getElementById("confirmation").textContent = "❌ Failed to log transaction!";
