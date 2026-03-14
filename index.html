@@ -60,7 +60,7 @@ async function logToSheet(itemData, transaction) {
     try {
         const response = await gapi.client.sheets.spreadsheets.values.append({
             spreadsheetId: SHEET_ID,
-            range: "A:E",
+            range: "TRANSACTION_LOG!A:E",
             valueInputOption: "USER_ENTERED",
             resource: { values }
         });
