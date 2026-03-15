@@ -3,16 +3,16 @@ name: Deploy Pages
 on:
   push:
     branches:
-      - main   # change to your default branch if not 'main'
+      - main   # change this if your default branch is not 'main'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # ensures Node.js 24
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
