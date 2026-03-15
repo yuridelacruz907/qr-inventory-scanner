@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inventory QR Scanner - Session Mode</title>
+<title>Inventory QR Scanner - Session Preview</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -26,10 +26,9 @@ input,select,button{padding:10px;margin:5px}
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-.scanned-list{border:1px solid #ccc; max-height:200px; overflow-y:auto; margin:10px auto; width:300px; text-align:left; padding:5px;}
-.scanned-list p{margin:2px 0; padding:2px 5px; border-bottom:1px solid #eee;}
+table{border-collapse:collapse; margin:10px auto; width:90%}
+th,td{border:1px solid #ccc; padding:5px; text-align:left}
 </style>
-
 </head>
 
 <body>
@@ -71,7 +70,24 @@ input,select,button{padding:10px;margin:5px}
 
 <p>Last Scan: <span id="scanned">None</span></p>
 
-<div id="sessionScans" class="scanned-list" style="display:none"></div>
+<!-- Session preview table -->
+<div id="sessionPreview" style="display:none">
+  <h3>Scanned Items Preview</h3>
+  <table id="previewTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>IS</th>
+        <th>Transaction</th>
+        <th>Name</th>
+        <th>Item No.</th>
+        <th>Description</th>
+        <th>User</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
 <div id="sessionButtons" style="display:none">
   <button id="backBtn">BACK</button>
@@ -87,16 +103,15 @@ let currentUser=""
 let suppliers=[]
 let personnel=[]
 let scanning=true
-let sessionScans=[] // store scans for this session
-let scanner
+let sessionScans=[] // store all scanned items
 
-// ---- BEEP FUNCTION ----
+// BEEP FUNCTION
 function beep(){
   const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
   audio.play()
 }
 
-// ---- LOGIN FUNCTION ----
+// LOGIN FUNCTION
 async function login(){
   const username=document.getElementById("username").value
   const password=document.getElementById("password").value
@@ -104,7 +119,7 @@ async function login(){
   try{
     const res=await fetch(WEBAPP_URL,{
       method:"POST",
-      body:new URLSearchParams({action:"login", username:username, password:password})
+      body:new URLSearchParams({action:"login", username, password})
     })
     const data=await res.json()
     document.getElementById("loginSpinner").innerHTML=""
@@ -113,7 +128,7 @@ async function login(){
       document.getElementById("loginPage").style.display="none"
       document.getElementById("scannerPage").style.display="block"
       loadDropdowns()
-    }else{
+    } else {
       document.getElementById("loginMsg").innerText="Invalid login"
     }
   }catch(err){
@@ -122,7 +137,7 @@ async function login(){
   }
 }
 
-// ---- LOAD DROPDOWNS ----
+// LOAD DROPDOWNS
 async function loadDropdowns(){
   const res=await fetch(WEBAPP_URL,{
     method:"POST",
@@ -140,7 +155,7 @@ async function loadDropdowns(){
   updateNames()
 }
 
-// ---- AUTOCOMPLETE FUNCTION ----
+// AUTOCOMPLETE
 function setupAutocomplete(list){
   const input=document.getElementById("nameInput")
   const suggestions=document.getElementById("nameSuggestions")
@@ -168,7 +183,7 @@ function setupAutocomplete(list){
   })
 }
 
-// ---- UPDATE NAMES BASED ON TRANSACTION ----
+// UPDATE NAMES BASED ON TRANSACTION
 document.getElementById("transaction").addEventListener("change",updateNames)
 function updateNames(){
   const transaction=document.getElementById("transaction").value
@@ -178,7 +193,7 @@ function updateNames(){
   setupAutocomplete(list)
 }
 
-// ---- START QR SCANNER ----
+// START SCANNER
 document.getElementById("startScanner").addEventListener("click",()=>{
   document.getElementById("startScanner").style.display="none"
   document.getElementById("doneBtn").style.display="inline-block"
@@ -186,7 +201,7 @@ document.getElementById("startScanner").addEventListener("click",()=>{
   scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
 })
 
-// ---- SCAN SUCCESS ----
+// SCAN SUCCESS
 function scanSuccess(decodedText){
   if(!scanning) return
   scanning=false
@@ -194,51 +209,51 @@ function scanSuccess(decodedText){
   document.getElementById("scanned").innerText=decodedText
   const [itemNo,description]=decodedText.split("|")
   const scanData={
+    date: new Date().toLocaleString(),
     is:document.getElementById("isDropdown").value,
     transaction:document.getElementById("transaction").value,
     name:document.getElementById("nameInput").value,
     itemNo,
-    description
+    description,
+    user:currentUser
   }
   sessionScans.push(scanData)
-  // Update session list
-  renderSessionList()
-  // Continue scanning after 0.5 sec
+  renderPreviewTable()
   setTimeout(()=>{scanning=true},500)
 }
 
-// ---- RENDER SESSION LIST ----
-function renderSessionList(){
-  const listDiv=document.getElementById("sessionScans")
-  listDiv.innerHTML=""
+// RENDER PREVIEW TABLE
+function renderPreviewTable(){
+  const tbody=document.querySelector("#previewTable tbody")
+  tbody.innerHTML=""
   sessionScans.forEach((s,i)=>{
-    const p=document.createElement("p")
-    p.textContent=`${i+1}. ${s.itemNo} | ${s.description} | ${s.transaction} | ${s.name}`
-    listDiv.appendChild(p)
+    const tr=document.createElement("tr")
+    tr.innerHTML=`<td>${s.date}</td><td>${s.is}</td><td>${s.transaction}</td><td>${s.name}</td><td>${s.itemNo}</td><td>${s.description}</td><td>${s.user}</td>`
+    tbody.appendChild(tr)
   })
 }
 
-// ---- DONE BUTTON ----
+// DONE BUTTON
 document.getElementById("doneBtn").addEventListener("click",()=>{
   scanner.stop().then(()=>{
     document.getElementById("reader").style.display="none"
-    document.getElementById("sessionScans").style.display="block"
+    document.getElementById("sessionPreview").style.display="block"
     document.getElementById("sessionButtons").style.display="block"
     document.getElementById("doneBtn").style.display="none"
   })
 })
 
-// ---- BACK BUTTON ----
+// BACK BUTTON
 document.getElementById("backBtn").addEventListener("click",()=>{
   document.getElementById("reader").style.display="block"
-  document.getElementById("sessionScans").style.display="none"
+  document.getElementById("sessionPreview").style.display="none"
   document.getElementById("sessionButtons").style.display="none"
   document.getElementById("startScanner").style.display="inline-block"
-  sessionScans=[] // clear previous scans or keep as needed
   document.getElementById("scanned").innerText="None"
+  // Keep previous sessionScans intact
 })
 
-// ---- CONFIRM BUTTON ----
+// CONFIRM BUTTON
 document.getElementById("confirmBtn").addEventListener("click", async()=>{
   for(const s of sessionScans){
     try{
@@ -251,7 +266,7 @@ document.getElementById("confirmBtn").addEventListener("click", async()=>{
           name:s.name,
           itemNo:s.itemNo,
           description:s.description,
-          user:currentUser
+          user:s.user
         })
       })
     }catch(err){
@@ -259,9 +274,8 @@ document.getElementById("confirmBtn").addEventListener("click", async()=>{
     }
   }
   document.getElementById("confirmation").innerText=`✅ Logged ${sessionScans.length} items`
-  // Reset session
   sessionScans=[]
-  document.getElementById("sessionScans").style.display="none"
+  document.getElementById("sessionPreview").style.display="none"
   document.getElementById("sessionButtons").style.display="none"
   document.getElementById("reader").style.display="block"
   document.getElementById("startScanner").style.display="inline-block"
