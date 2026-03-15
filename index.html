@@ -2,9 +2,9 @@
 <html>
 <head>
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>LEGA-Z Inventory</title>
+<title>LEGA-Z</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -19,7 +19,7 @@ padding:20px;
 }
 
 .gold{
-font-size:48px;
+font-size:50px;
 font-weight:bold;
 background:linear-gradient(45deg,#c9a227,#ffd700,#c9a227);
 -webkit-background-clip:text;
@@ -27,7 +27,6 @@ color:transparent;
 }
 
 .subtitle{
-font-size:18px;
 font-weight:bold;
 }
 
@@ -50,14 +49,10 @@ font-weight:bold;
 cursor:pointer;
 }
 
-button:hover{
-background:#0891b2;
-}
-
 table{
 border-collapse:collapse;
+width:100%;
 margin:auto;
-width:95%;
 }
 
 th,td{
@@ -65,29 +60,13 @@ border:1px solid #334155;
 padding:6px;
 }
 
-.spinner{
-border:4px solid #333;
-border-top:4px solid #06b6d4;
-border-radius:50%;
-width:25px;
-height:25px;
-animation:spin 1s linear infinite;
-display:inline-block;
-}
-
-@keyframes spin{
-0%{transform:rotate(0deg)}
-100%{transform:rotate(360deg)}
-}
-
 #reader{
 width:300px;
 margin:auto;
 }
 
-.counter{
-color:#22c55e;
-font-weight:bold;
+.selected{
+background:#334155;
 }
 
 </style>
@@ -95,8 +74,6 @@ font-weight:bold;
 </head>
 
 <body>
-
-<!-- LOGIN -->
 
 <div id="loginPage">
 
@@ -116,12 +93,8 @@ font-weight:bold;
 
 <button onclick="login()">SIGN IN</button>
 
-<div id="loginSpin"></div>
-
 </div>
 
-
-<!-- MENU -->
 
 <div id="menuPage" style="display:none">
 
@@ -137,19 +110,17 @@ font-weight:bold;
 
 
 
-<!-- CHECK ITEM -->
-
 <div id="checkPage" style="display:none">
 
 <h3>CHECK ITEM</h3>
 
 <div id="readerCheck"></div>
 
-<p>Item Number: <span id="ciItem"></span></p>
+<p>Item: <span id="ciItem"></span></p>
 
 <p>Description: <span id="ciDesc"></span></p>
 
-<p>Total Available: <span id="ciQty"></span></p>
+<p>Available: <span id="ciQty"></span></p>
 
 <button onclick="backMenu()">BACK</button>
 
@@ -157,37 +128,29 @@ font-weight:bold;
 
 
 
-<!-- INVENTORY -->
-
 <div id="inventoryPage" style="display:none">
 
-<h3>INVENTORY DASHBOARD</h3>
+<h3>INVENTORY</h3>
 
 <table>
 
 <thead>
-
 <tr>
 <th>Item</th>
 <th>Description</th>
 <th>Stock</th>
 </tr>
-
 </thead>
 
 <tbody id="inventoryBody"></tbody>
 
 </table>
 
-<br>
-
 <button onclick="backMenu()">BACK</button>
 
 </div>
 
 
-
-<!-- TRANSACTION SYSTEM -->
 
 <div id="scannerPage" style="display:none">
 
@@ -204,40 +167,28 @@ font-weight:bold;
 <br>
 
 <button id="startScanner">START SCANNING</button>
-
-<button id="doneBtn" style="display:none">DONE</button>
+<button id="doneBtn">DONE</button>
 
 <div id="reader"></div>
 
-<div class="counter">
-
-Scans: <span id="scanCount">0</span>
-
-</div>
-
-<div id="preview">
+<p>Scans: <span id="scanCount">0</span></p>
 
 <table>
 
 <thead>
-
 <tr>
 <th>Date</th>
 <th>Item</th>
 <th>Description</th>
 <th>Qty</th>
 </tr>
-
 </thead>
 
 <tbody id="tableBody"></tbody>
 
 </table>
 
-</div>
-
-<br>
-
+<button id="deleteBtn">DELETE</button>
 <button id="confirmBtn">CONFIRM</button>
 
 <button onclick="backMenu()">BACK</button>
@@ -251,15 +202,17 @@ Scans: <span id="scanCount">0</span>
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
 let scanner
+let scanning=true
 let session=[]
+let selectedRow=null
 let currentUser=""
 
+function beep(){
+new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
+}
 
-// LOGIN
 
 async function login(){
-
-loginSpin.innerHTML='<span class="spinner"></span>'
 
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
@@ -272,8 +225,6 @@ password:password.value
 
 const data=await res.json()
 
-loginSpin.innerHTML=""
-
 if(data.status==="success"){
 
 currentUser=username.value
@@ -283,29 +234,23 @@ menuPage.style.display="block"
 
 }else{
 
-alert("Invalid login")
+alert("Invalid Login")
 
 }
 
 }
 
-
-
-// MENU
 
 function backMenu(){
 
 menuPage.style.display="block"
-
-checkPage.style.display="none"
-inventoryPage.style.display="none"
 scannerPage.style.display="none"
+inventoryPage.style.display="none"
+checkPage.style.display="none"
 
 }
 
 
-
-// CHECK ITEM
 
 function openCheck(){
 
@@ -314,10 +259,7 @@ checkPage.style.display="block"
 
 const scan=new Html5Qrcode("readerCheck")
 
-scan.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-async(text)=>{
+scan.start({facingMode:"environment"},{fps:10,qrbox:250},async(text)=>{
 
 const[itemNo]=text.split("|")
 
@@ -341,8 +283,6 @@ ciQty.innerText=data.qty
 
 
 
-// INVENTORY
-
 async function openInventory(){
 
 menuPage.style.display="none"
@@ -359,9 +299,9 @@ const data=await res.json()
 
 inventoryBody.innerHTML=""
 
-for(const item in data){
+for(let item in data){
 
-const tr=document.createElement("tr")
+let tr=document.createElement("tr")
 
 tr.innerHTML=`
 <td>${item}</td>
@@ -377,8 +317,6 @@ inventoryBody.appendChild(tr)
 
 
 
-// TRANSACTIONS
-
 function openTransactions(){
 
 menuPage.style.display="none"
@@ -388,11 +326,7 @@ scanner=new Html5Qrcode("reader")
 
 startScanner.onclick=function(){
 
-scanner.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-scanSuccess
-)
+scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
 
 }
 
@@ -406,13 +340,17 @@ scanner.stop()
 
 
 
-// SCAN SUCCESS
-
 function scanSuccess(text){
+
+if(!scanning)return
+
+scanning=false
+
+beep()
 
 const[itemNo,description]=text.split("|")
 
-const existing=session.find(s=>s.itemNo===itemNo)
+let existing=session.find(s=>s.itemNo===itemNo)
 
 if(existing){
 
@@ -431,11 +369,13 @@ qty:1
 
 renderTable()
 
+setTimeout(()=>{
+scanning=true
+},1000)
+
 }
 
 
-
-// RENDER TABLE
 
 function renderTable(){
 
@@ -443,7 +383,7 @@ tableBody.innerHTML=""
 
 session.forEach((s,i)=>{
 
-const tr=document.createElement("tr")
+let tr=document.createElement("tr")
 
 tr.innerHTML=`
 <td>${s.date}</td>
@@ -451,6 +391,16 @@ tr.innerHTML=`
 <td>${s.description}</td>
 <td contenteditable="true">${s.qty}</td>
 `
+
+tr.onclick=function(){
+
+document.querySelectorAll("#tableBody tr").forEach(r=>r.classList.remove("selected"))
+
+tr.classList.add("selected")
+
+selectedRow=i
+
+}
 
 tableBody.appendChild(tr)
 
@@ -462,11 +412,22 @@ scanCount.innerText=session.length
 
 
 
-// CONFIRM
+deleteBtn.onclick=function(){
 
-confirmBtn.onclick=async()=>{
+if(selectedRow===null)return
+
+session.splice(selectedRow,1)
+
+renderTable()
+
+}
+
+
+
+confirmBtn.onclick=async function(){
 
 const payload=session.map(s=>({
+
 is:"",
 transaction:transaction.value,
 name:"",
@@ -474,6 +435,7 @@ itemNo:s.itemNo,
 description:s.description,
 qty:s.qty,
 user:currentUser
+
 }))
 
 await fetch(WEBAPP_URL,{
