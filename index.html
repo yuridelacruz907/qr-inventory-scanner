@@ -9,29 +9,26 @@
 <style>
 body{font-family:Arial;text-align:center;padding:20px}
 #reader{width:300px;margin:auto}
-select,input,button{padding:10px;margin:5px}
+input,select,button{padding:10px;margin:5px}
+#nameSuggestions{border:1px solid #ccc; max-height:150px; overflow-y:auto; text-align:left; margin:auto; width:300px}
+#confirmation{color:green; font-weight:bold; margin-top:10px}
 </style>
 
 </head>
 
 <body>
 
+<!-- LOGIN PAGE -->
 <div id="loginPage">
-
 <h2>Login</h2>
-
 <input id="username" placeholder="Username"><br>
 <input id="password" type="password" placeholder="Password"><br>
-
 <button onclick="login()">Sign In</button>
-
 <p id="loginMsg"></p>
-
 </div>
 
-
+<!-- SCANNER PAGE -->
 <div id="scannerPage" style="display:none">
-
 <h2>Property Inventory QR Scanner</h2>
 
 <label>IS:</label><br>
@@ -47,169 +44,152 @@ select,input,button{padding:10px;margin:5px}
 </select><br>
 
 <label>Name:</label><br>
-<select id="nameDropdown"></select><br>
+<input id="nameInput" type="text" placeholder="Type name">
+<div id="nameSuggestions"></div>
 
 <button id="startScanner">Start Scanner</button>
 
 <div id="reader"></div>
 
 <p>Last Scan: <span id="scanned">None</span></p>
-
 <p id="confirmation"></p>
-
 </div>
 
-
 <script>
-
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
 let currentUser=""
 let suppliers=[]
 let personnel=[]
-
-function beep(){
-const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
-audio.play()
-}
-
-async function login(){
-
-const username=document.getElementById("username").value
-const password=document.getElementById("password").value
-
-try{
-
-const res=await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({
-action:"login",
-username:username,
-password:password
-})
-})
-
-const data=await res.json()
-
-if(data.status==="success"){
-
-currentUser=username
-
-document.getElementById("loginPage").style.display="none"
-document.getElementById("scannerPage").style.display="block"
-
-loadDropdowns()
-
-}else{
-
-document.getElementById("loginMsg").innerText="Invalid login"
-
-}
-
-}catch(err){
-
-document.getElementById("loginMsg").innerText="Connection error"
-
-}
-
-}
-
-
-async function loadDropdowns(){
-
-const res=await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({action:"getDropdowns"})
-})
-
-const data=await res.json()
-
-suppliers=data.suppliers
-personnel=data.personnel
-
-const isDrop=document.getElementById("isDropdown")
-
-data.isList.forEach(v=>{
-let opt=document.createElement("option")
-opt.text=v
-isDrop.add(opt)
-})
-
-updateNames()
-
-}
-
-document.getElementById("transaction").addEventListener("change",updateNames)
-
-function updateNames(){
-
-const transaction=document.getElementById("transaction").value
-const nameDrop=document.getElementById("nameDropdown")
-
-nameDrop.innerHTML=""
-
-let list=[]
-
-if(transaction==="RECEIVED"){list=suppliers}
-if(transaction==="ISSUED"){list=personnel}
-
-list.forEach(v=>{
-let opt=document.createElement("option")
-opt.text=v
-nameDrop.add(opt)
-})
-
-}
-
-
-let scanner
 let scanning=true
 
-document.getElementById("startScanner").addEventListener("click",()=>{
-
-scanner=new Html5Qrcode("reader")
-
-scanner.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-scanSuccess
-)
-
-})
-
-async function scanSuccess(decodedText){
-
-if(!scanning)return
-
-scanning=false
-
-beep()
-
-document.getElementById("scanned").innerText=decodedText
-
-const [itemNo,description]=decodedText.split("|")
-
-await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({
-action:"log",
-is:document.getElementById("isDropdown").value,
-transaction:document.getElementById("transaction").value,
-name:document.getElementById("nameDropdown").value,
-itemNo:itemNo,
-description:description,
-user:currentUser
-})
-})
-
-document.getElementById("confirmation").innerText="Logged "+itemNo
-
-setTimeout(()=>{
-scanning=true
-},1000)
-
+// ---- BEEP FUNCTION ----
+function beep(){
+  const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+  audio.play()
 }
 
+// ---- LOGIN FUNCTION ----
+async function login(){
+  const username=document.getElementById("username").value
+  const password=document.getElementById("password").value
+  try{
+    const res=await fetch(WEBAPP_URL,{
+      method:"POST",
+      body:new URLSearchParams({
+        action:"login",
+        username:username,
+        password:password
+      })
+    })
+    const data=await res.json()
+    if(data.status==="success"){
+      currentUser=username
+      document.getElementById("loginPage").style.display="none"
+      document.getElementById("scannerPage").style.display="block"
+      loadDropdowns()
+    }else{
+      document.getElementById("loginMsg").innerText="Invalid login"
+    }
+  }catch(err){
+    document.getElementById("loginMsg").innerText="Connection error"
+  }
+}
+
+// ---- LOAD DROPDOWNS ----
+async function loadDropdowns(){
+  const res=await fetch(WEBAPP_URL,{
+    method:"POST",
+    body:new URLSearchParams({action:"getDropdowns"})
+  })
+  const data=await res.json()
+  suppliers=data.suppliers
+  personnel=data.personnel
+  const isDrop=document.getElementById("isDropdown")
+  data.isList.forEach(v=>{
+    let opt=document.createElement("option")
+    opt.text=v
+    isDrop.add(opt)
+  })
+  updateNames()
+}
+
+// ---- AUTOCOMPLETE FUNCTION ----
+function setupAutocomplete(list){
+  const input=document.getElementById("nameInput")
+  const suggestions=document.getElementById("nameSuggestions")
+  input.addEventListener("input",()=>{
+    const value=input.value.toLowerCase()
+    suggestions.innerHTML=""
+    if(!value) return
+    const filtered=list.filter(n=>n.toLowerCase().includes(value)).slice(0,10)
+    filtered.forEach(name=>{
+      const div=document.createElement("div")
+      div.textContent=name
+      div.style.padding="5px"
+      div.style.cursor="pointer"
+      div.addEventListener("click",()=>{
+        input.value=name
+        suggestions.innerHTML=""
+      })
+      suggestions.appendChild(div)
+    })
+  })
+  document.addEventListener("click",e=>{
+    if(!suggestions.contains(e.target) && e.target!==input){
+      suggestions.innerHTML=""
+    }
+  })
+}
+
+// ---- UPDATE NAMES BASED ON TRANSACTION ----
+document.getElementById("transaction").addEventListener("change",updateNames)
+function updateNames(){
+  const transaction=document.getElementById("transaction").value
+  let list=[]
+  if(transaction==="RECEIVED") list=suppliers
+  else if(transaction==="ISSUED") list=personnel
+  setupAutocomplete(list)
+}
+
+// ---- START QR SCANNER ----
+document.getElementById("startScanner").addEventListener("click",()=>{
+  const scanner=new Html5Qrcode("reader")
+  scanner.start(
+    {facingMode:"environment"},
+    {fps:10,qrbox:250},
+    scanSuccess
+  )
+})
+
+// ---- SCAN SUCCESS ----
+async function scanSuccess(decodedText){
+  if(!scanning) return
+  scanning=false
+  beep()
+  document.getElementById("scanned").innerText=decodedText
+  const [itemNo,description]=decodedText.split("|")
+  const payload={
+    action:"log",
+    is:document.getElementById("isDropdown").value,
+    transaction:document.getElementById("transaction").value,
+    name:document.getElementById("nameInput").value,
+    itemNo:itemNo,
+    description:description,
+    user:currentUser
+  }
+  try{
+    await fetch(WEBAPP_URL,{
+      method:"POST",
+      body:new URLSearchParams(payload)
+    })
+    document.getElementById("confirmation").innerText="✅ Logged "+itemNo
+  }catch(err){
+    document.getElementById("confirmation").innerText="❌ Failed to log transaction"
+  }
+  // Continue scanning after 0.5 second
+  setTimeout(()=>{scanning=true},500)
+}
 </script>
 
 </body>
