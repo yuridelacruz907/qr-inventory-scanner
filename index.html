@@ -1,36 +1,41 @@
 <!DOCTYPE html>
 <html>
-<head>
 
+<head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LEGA-Z Inventory</title>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-
 body{
-font-family:Arial;
 background:#0f172a;
 color:white;
+font-family:Arial;
 text-align:center;
 padding:20px;
 }
 
-h1{
+.gold{
+background:linear-gradient(90deg,#d4af37,#ffd700,#b8962e);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+font-weight:bold;
+}
+
+#titleMain{
 font-size:48px;
-margin-bottom:0;
 letter-spacing:3px;
 }
 
-h2{
-margin-top:5px;
-font-weight:400;
+#titleSub{
+font-size:18px;
+font-weight:bold;
+margin-bottom:20px;
 }
 
-.small{
-font-size:12px;
-opacity:.7;
+.smallGold{
+font-size:14px;
+margin-top:5px;
 }
 
 .container{
@@ -40,7 +45,6 @@ margin:auto;
 
 .row{
 display:flex;
-justify-content:space-between;
 gap:10px;
 }
 
@@ -68,25 +72,10 @@ width:300px;
 margin:auto;
 }
 
-.spinner{
-border:4px solid #f3f3f3;
-border-top:4px solid #06b6d4;
-border-radius:50%;
-width:30px;
-height:30px;
-animation:spin 1s linear infinite;
-display:inline-block;
-}
-
-@keyframes spin{
-0%{transform:rotate(0deg)}
-100%{transform:rotate(360deg)}
-}
-
 table{
 border-collapse:collapse;
-margin:10px auto;
 width:100%;
+margin-top:10px;
 }
 
 th,td{
@@ -94,69 +83,52 @@ border:1px solid #334155;
 padding:6px;
 }
 
-tr.selected{
-background:#334155;
+input.qty{
+width:70px;
+text-align:center;
 }
 
-#nameSuggestions{
-background:#1e293b;
-border:1px solid #334155;
-max-height:150px;
-overflow:auto;
+.spinner{
+border:4px solid #ccc;
+border-top:4px solid #06b6d4;
+border-radius:50%;
+width:30px;
+height:30px;
+animation:spin 1s linear infinite;
+margin:auto;
 }
 
-#nameSuggestions div{
-padding:5px;
-cursor:pointer;
+@keyframes spin{
+0%{transform:rotate(0)}
+100%{transform:rotate(360deg)}
 }
-
-#nameSuggestions div:hover{
-background:#334155;
-}
-
-.counter{
-margin:10px;
-font-weight:bold;
-color:#22c55e;
-}
-
 </style>
-
 </head>
 
 <body>
 
-<!-- LOGIN PAGE -->
-
 <div id="loginPage" class="container">
 
-<h1>LEGA - Z</h1>
-
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
-
-<div class="small">YURI</div>
+<div id="titleMain" class="gold">LEGA - Z</div>
+<div id="titleSub">SPGUG - LOD INVENTORY MONITORING SYSTEM</div>
+<div class="gold smallGold">YURI</div>
 
 <br>
 
 <input id="username" placeholder="Username">
-
 <input id="password" type="password" placeholder="Password">
 
 <button onclick="login()">Sign In</button>
 
 <div id="loginSpinner"></div>
-
 <p id="loginMsg"></p>
 
 </div>
 
 
-
-<!-- MAIN SYSTEM -->
-
 <div id="scannerPage" class="container" style="display:none">
 
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
+<div id="titleSub">SPGUG - LOD INVENTORY MONITORING SYSTEM</div>
 
 <div class="row">
 
@@ -179,66 +151,41 @@ color:#22c55e;
 </div>
 
 <label>Name</label>
-
-<input id="nameInput" placeholder="Type name">
-
-<div id="nameSuggestions"></div>
+<input id="nameInput">
 
 <button id="startScanner">Start Scanning</button>
-
 <button id="doneBtn" style="display:none">DONE</button>
-
-<div id="processSpinner"></div>
 
 <div id="reader"></div>
 
-<div class="counter">
-Scanned Items: <span id="scanCount">0</span>
-</div>
-
+<div>Scanned: <span id="scanCount">0</span></div>
 <p>Last Scan: <span id="scanned">None</span></p>
 
 
-<!-- PREVIEW -->
-
-<div id="sessionPreview" style="display:none">
-
-<h3>Scanned Items</h3>
+<div id="previewSection" style="display:none">
 
 <table id="previewTable">
-
 <thead>
-
 <tr>
 <th>Date</th>
-<th>IS</th>
-<th>Transaction</th>
-<th>Name</th>
-<th>Item</th>
+<th>Item Number</th>
 <th>Description</th>
-<th>User</th>
+<th>Quantity</th>
 </tr>
-
 </thead>
-
 <tbody></tbody>
-
 </table>
 
-<button id="deleteRowBtn">Delete Selected Row</button>
-
-</div>
-
-
-<div id="sessionButtons" style="display:none">
-
+<button id="deleteBtn">DELETE</button>
 <button id="backBtn">BACK</button>
-
 <button id="confirmBtn">CONFIRM</button>
 
 </div>
 
-<p id="confirmation"></p>
+
+<div id="doneAfterConfirm" style="display:none">
+<button id="finishBtn">DONE</button>
+</div>
 
 </div>
 
@@ -247,35 +194,19 @@ Scanned Items: <span id="scanCount">0</span>
 
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
-let currentUser=""
-let suppliers=[]
-let personnel=[]
 let scanner
 let scanning=true
+let currentUser=""
 let sessionScans=[]
-let selectedRowIndex=null
+let selectedIndex=null
 
-// load cached scans if offline
-const cached=localStorage.getItem("offlineScans")
-if(cached){
-sessionScans=JSON.parse(cached)
-}
-
-
-// beep
 function beep(){
-const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
-audio.play()
+new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
 }
-
-
-// login
 
 async function login(){
 
-document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
-
-try{
+loginSpinner.innerHTML='<div class="spinner"></div>'
 
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
@@ -288,14 +219,13 @@ password:password.value
 
 const data=await res.json()
 
-document.getElementById("loginSpinner").innerHTML=""
+loginSpinner.innerHTML=""
 
 if(data.status==="success"){
 
 currentUser=username.value
 
 loginPage.style.display="none"
-
 scannerPage.style.display="block"
 
 loadDropdowns()
@@ -306,17 +236,7 @@ loginMsg.innerText="Invalid login"
 
 }
 
-}catch{
-
-loginMsg.innerText="Connection error"
-
 }
-
-}
-
-
-
-// dropdowns
 
 async function loadDropdowns(){
 
@@ -327,73 +247,17 @@ body:new URLSearchParams({action:"getDropdowns"})
 
 const data=await res.json()
 
-suppliers=data.suppliers
-personnel=data.personnel
-
 data.isList.forEach(v=>{
 let o=document.createElement("option")
 o.text=v
 isDropdown.add(o)
 })
 
-updateNames()
-
 }
-
-
-// autocomplete
-
-function setupAutocomplete(list){
-
-nameInput.oninput=function(){
-
-const value=this.value.toLowerCase()
-
-nameSuggestions.innerHTML=""
-
-if(!value)return
-
-list.filter(n=>n.toLowerCase().includes(value)).slice(0,10).forEach(name=>{
-
-const div=document.createElement("div")
-
-div.textContent=name
-
-div.onclick=()=>{
-nameInput.value=name
-nameSuggestions.innerHTML=""
-}
-
-nameSuggestions.appendChild(div)
-
-})
-
-}
-
-}
-
-
-transaction.onchange=updateNames
-
-function updateNames(){
-
-let list=[]
-
-if(transaction.value==="RECEIVED") list=suppliers
-if(transaction.value==="ISSUED") list=personnel
-
-setupAutocomplete(list)
-
-}
-
-
-
-// scanner start
 
 startScanner.onclick=function(){
 
 startScanner.style.display="none"
-
 doneBtn.style.display="inline-block"
 
 scanner=new Html5Qrcode("reader")
@@ -406,11 +270,7 @@ scanSuccess
 
 }
 
-
-
-// scan success
-
-function scanSuccess(decodedText){
+function scanSuccess(text){
 
 if(!scanning)return
 
@@ -418,41 +278,24 @@ scanning=false
 
 beep()
 
-scanned.innerText=decodedText
+scanned.innerText=text
 
-const[itemNo,description]=decodedText.split("|")
+const[itemNo,description]=text.split("|")
 
-const scan={
-
+sessionScans.push({
 date:new Date().toLocaleString(),
-is:isDropdown.value,
-transaction:transaction.value,
-name:nameInput.value,
 itemNo,
 description,
-user:currentUser
-
-}
-
-sessionScans.push(scan)
-
-localStorage.setItem("offlineScans",JSON.stringify(sessionScans))
+qty:1
+})
 
 renderTable()
 
 scanCount.innerText=sessionScans.length
 
-setTimeout(()=>{
-
-scanning=true
-
-},1000)
+setTimeout(()=>{scanning=true},1000)
 
 }
-
-
-
-// table render
 
 function renderTable(){
 
@@ -466,23 +309,12 @@ const tr=document.createElement("tr")
 
 tr.innerHTML=`
 <td>${s.date}</td>
-<td>${s.is}</td>
-<td>${s.transaction}</td>
-<td>${s.name}</td>
 <td>${s.itemNo}</td>
 <td>${s.description}</td>
-<td>${s.user}</td>
+<td><input class="qty" type="number" step="0.01" value="${s.qty}" onchange="sessionScans[${i}].qty=this.value"></td>
 `
 
-tr.onclick=function(){
-
-document.querySelectorAll("#previewTable tr").forEach(r=>r.classList.remove("selected"))
-
-tr.classList.add("selected")
-
-selectedRowIndex=i
-
-}
+tr.onclick=()=>selectedIndex=i
 
 tbody.appendChild(tr)
 
@@ -490,98 +322,83 @@ tbody.appendChild(tr)
 
 }
 
-
-
-// done
-
 doneBtn.onclick=function(){
 
-processSpinner.innerHTML='<span class="spinner"></span>'
+scanner.stop()
 
-scanner.stop().then(()=>{
-
-processSpinner.innerHTML=""
-
-reader.style.display="none"
-
-sessionPreview.style.display="block"
-
-sessionButtons.style.display="block"
-
-doneBtn.style.display="none"
-
-})
+previewSection.style.display="block"
 
 }
 
+deleteBtn.onclick=function(){
 
+if(selectedIndex==null)return
 
-// back
+sessionScans.splice(selectedIndex,1)
+
+renderTable()
+
+scanCount.innerText=sessionScans.length
+
+}
 
 backBtn.onclick=function(){
 
-reader.style.display="block"
+previewSection.style.display="none"
 
-sessionPreview.style.display="none"
-
-sessionButtons.style.display="none"
-
-startScanner.style.display="inline-block"
+scanner.start(
+{facingMode:"environment"},
+{fps:10,qrbox:250},
+scanSuccess
+)
 
 }
 
-
-
-// confirm
-
 confirmBtn.onclick=async function(){
 
-processSpinner.innerHTML='<span class="spinner"></span>'
-
 for(const s of sessionScans){
-
-try{
 
 await fetch(WEBAPP_URL,{
 method:"POST",
 body:new URLSearchParams({
 action:"log",
-is:s.is,
-transaction:s.transaction,
-name:s.name,
+is:isDropdown.value,
+transaction:transaction.value,
+name:nameInput.value,
 itemNo:s.itemNo,
 description:s.description,
-user:s.user
+qty:s.qty,
+user:currentUser
 })
 })
 
-}catch{}
+}
+
+confirmBtn.style.display="none"
+backBtn.style.display="none"
+deleteBtn.style.display="none"
+
+doneAfterConfirm.style.display="block"
 
 }
 
-processSpinner.innerHTML=""
+finishBtn.onclick=function(){
 
-confirmation.innerText="Logged "+sessionScans.length+" items"
-
-localStorage.removeItem("offlineScans")
-
-}
-
-
-
-// delete row
-
-deleteRowBtn.onclick=function(){
-
-if(selectedRowIndex===null)return
-
-sessionScans.splice(selectedRowIndex,1)
-
-localStorage.setItem("offlineScans",JSON.stringify(sessionScans))
+sessionScans=[]
 
 renderTable()
 
-scanCount.innerText=sessionScans.length
+scanCount.innerText=0
+
+previewSection.style.display="none"
+
+confirmBtn.style.display="inline-block"
+backBtn.style.display="inline-block"
+deleteBtn.style.display="inline-block"
+
+doneAfterConfirm.style.display="none"
+
+startScanner.style.display="inline-block"
 
 }
 
