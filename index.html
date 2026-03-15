@@ -28,6 +28,7 @@ input,select,button{padding:10px;margin:5px}
 }
 table{border-collapse:collapse; margin:10px auto; width:90%}
 th,td{border:1px solid #ccc; padding:5px; text-align:left}
+tr.selected{background-color:#ffd;}
 </style>
 </head>
 
@@ -87,6 +88,7 @@ th,td{border:1px solid #ccc; padding:5px; text-align:left}
     </thead>
     <tbody></tbody>
   </table>
+  <button id="deleteRowBtn">Delete Selected Row</button>
 </div>
 
 <div id="sessionButtons" style="display:none">
@@ -103,7 +105,8 @@ let currentUser=""
 let suppliers=[]
 let personnel=[]
 let scanning=true
-let sessionScans=[] // store all scanned items
+let sessionScans=[]
+let selectedRowIndex=null
 
 // BEEP FUNCTION
 function beep(){
@@ -219,16 +222,21 @@ function scanSuccess(decodedText){
   }
   sessionScans.push(scanData)
   renderPreviewTable()
-  setTimeout(()=>{scanning=true},500)
+  setTimeout(()=>{scanning=true},750) // 0.75 second delay
 }
 
-// RENDER PREVIEW TABLE
+// RENDER PREVIEW TABLE WITH ROW SELECTION
 function renderPreviewTable(){
   const tbody=document.querySelector("#previewTable tbody")
   tbody.innerHTML=""
   sessionScans.forEach((s,i)=>{
     const tr=document.createElement("tr")
     tr.innerHTML=`<td>${s.date}</td><td>${s.is}</td><td>${s.transaction}</td><td>${s.name}</td><td>${s.itemNo}</td><td>${s.description}</td><td>${s.user}</td>`
+    tr.addEventListener("click",()=>{
+      tbody.querySelectorAll("tr").forEach(r=>r.classList.remove("selected"))
+      tr.classList.add("selected")
+      selectedRowIndex=i
+    })
     tbody.appendChild(tr)
   })
 }
@@ -250,7 +258,6 @@ document.getElementById("backBtn").addEventListener("click",()=>{
   document.getElementById("sessionButtons").style.display="none"
   document.getElementById("startScanner").style.display="inline-block"
   document.getElementById("scanned").innerText="None"
-  // Keep previous sessionScans intact
 })
 
 // CONFIRM BUTTON
@@ -275,12 +282,22 @@ document.getElementById("confirmBtn").addEventListener("click", async()=>{
   }
   document.getElementById("confirmation").innerText=`✅ Logged ${sessionScans.length} items`
   sessionScans=[]
+  selectedRowIndex=null
   document.getElementById("sessionPreview").style.display="none"
   document.getElementById("sessionButtons").style.display="none"
   document.getElementById("reader").style.display="block"
   document.getElementById("startScanner").style.display="inline-block"
   document.getElementById("scanned").innerText="None"
 })
+
+// DELETE SELECTED ROW
+document.getElementById("deleteRowBtn").addEventListener("click",()=>{
+  if(selectedRowIndex===null) return
+  sessionScans.splice(selectedRowIndex,1)
+  selectedRowIndex=null
+  renderPreviewTable()
+})
+
 </script>
 
 </body>
