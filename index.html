@@ -58,10 +58,6 @@ color:white;
 cursor:pointer;
 }
 
-button:disabled{
-background:#475569;
-}
-
 table{
 border-collapse:collapse;
 width:100%;
@@ -73,16 +69,12 @@ border:1px solid #334155;
 padding:6px;
 }
 
-.selected{
-background:#334155;
-}
-
 #reader{
 width:300px;
 margin:auto;
 }
 
-.greenMsg{
+.success{
 color:#22c55e;
 font-weight:bold;
 font-size:18px;
@@ -93,8 +85,6 @@ font-size:18px;
 </head>
 
 <body>
-
-<!-- LOGIN -->
 
 <div id="loginPage">
 
@@ -118,8 +108,6 @@ font-size:18px;
 </div>
 
 
-<!-- MENU -->
-
 <div id="menuPage" style="display:none">
 
 <h2>OPTIONS</h2>
@@ -130,8 +118,6 @@ font-size:18px;
 
 </div>
 
-
-<!-- CHECK ITEM -->
 
 <div id="checkPage" style="display:none">
 
@@ -147,8 +133,6 @@ font-size:18px;
 
 </div>
 
-
-<!-- INVENTORY -->
 
 <div id="inventoryPage" style="display:none">
 
@@ -175,8 +159,6 @@ font-size:18px;
 </div>
 
 
-<!-- TRANSACTIONS -->
-
 <div id="transactionPage" style="display:none">
 
 <h3>TRANSACTIONS</h3>
@@ -184,7 +166,6 @@ font-size:18px;
 <select id="isDropdown"></select>
 
 <select id="transactionType">
-<option value="">Transaction Type</option>
 <option>RECEIVED</option>
 <option>ISSUED</option>
 <option>TRANSFERRED</option>
@@ -194,35 +175,19 @@ font-size:18px;
 
 <input id="nameInput" placeholder="Name">
 
-<div id="nameSuggest"></div>
+<button id="startBtn">START SCANNING</button>
 
-<br>
-
-<button id="startBtn" disabled>START SCANNING</button>
 <button onclick="backMenu()">BACK</button>
 
 </div>
 
 
-<!-- SCANNER -->
-
 <div id="scannerPage" style="display:none">
 
 <div id="reader"></div>
 
-<br>
-
-<button id="doneScan">DONE</button>
+<button id="doneBtn">DONE</button>
 <button id="scanBack">BACK</button>
-
-</div>
-
-
-<!-- SUMMARY -->
-
-<div id="summaryPage" style="display:none">
-
-<h3>TRANSACTION SUMMARY</h3>
 
 <table>
 
@@ -235,15 +200,18 @@ font-size:18px;
 </tr>
 </thead>
 
-<tbody id="summaryBody"></tbody>
+<tbody id="scanBody"></tbody>
 
 </table>
 
-<button id="deleteRow">DELETE</button>
-<button id="summaryBack">BACK</button>
-<button id="confirmBtn">CONFIRM</button>
+</div>
 
-<p id="successMsg"></p>
+
+<div id="confirmPage" style="display:none">
+
+<p id="confirmMsg"></p>
+
+<button onclick="backMenu()">BACK</button>
 
 </div>
 
@@ -252,31 +220,14 @@ font-size:18px;
 
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
-let suppliers=[]
-let personnel=[]
 let scanner
 let session=[]
 let scanning=true
-let selectedRow=null
 let currentUser=""
 
 function beep(){
 new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
 }
-
-function enableStart(){
-
-if(isDropdown.value && transactionType.value && nameInput.value){
-startBtn.disabled=false
-}else{
-startBtn.disabled=true
-}
-
-}
-
-isDropdown.onchange=enableStart
-transactionType.onchange=updateNames
-nameInput.oninput=enableStart
 
 
 async function login(){
@@ -305,11 +256,10 @@ menuPage.style.display="block"
 
 loadDropdowns()
 
-}else{
-alert("Invalid Login")
 }
 
 }
+
 
 async function loadDropdowns(){
 
@@ -320,9 +270,6 @@ body:new URLSearchParams({action:"getDropdowns"})
 
 const data=await res.json()
 
-suppliers=data.suppliers
-personnel=data.personnel
-
 data.isList.forEach(v=>{
 let o=document.createElement("option")
 o.text=v
@@ -331,47 +278,24 @@ isDropdown.add(o)
 
 }
 
-function updateNames(){
 
-let list=[]
-
-if(transactionType.value==="RECEIVED") list=suppliers
-if(transactionType.value==="ISSUED") list=personnel
-
-nameSuggest.innerHTML=""
-
-nameInput.oninput=function(){
-
-let val=this.value.toLowerCase()
-
-nameSuggest.innerHTML=""
-
-list.filter(n=>n.toLowerCase().includes(val)).slice(0,8).forEach(n=>{
-
-let d=document.createElement("div")
-
-d.textContent=n
-
-d.onclick=function(){
-nameInput.value=n
-nameSuggest.innerHTML=""
-enableStart()
+function openCheck(){
+menuPage.style.display="none"
+checkPage.style.display="block"
 }
 
-nameSuggest.appendChild(d)
 
-})
-
+function openInventory(){
+menuPage.style.display="none"
+inventoryPage.style.display="block"
 }
 
-}
 
 function openTransactions(){
-
 menuPage.style.display="none"
 transactionPage.style.display="block"
-
 }
+
 
 startBtn.onclick=function(){
 
@@ -384,6 +308,7 @@ scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
 
 }
 
+
 scanBack.onclick=function(){
 
 scanner.stop()
@@ -392,6 +317,7 @@ scannerPage.style.display="none"
 transactionPage.style.display="block"
 
 }
+
 
 function scanSuccess(text){
 
@@ -416,27 +342,18 @@ qty:1
 })
 }
 
+renderScan()
+
 setTimeout(()=>scanning=true,1000)
 
 }
 
-doneScan.onclick=function(){
 
-scanner.stop()
+function renderScan(){
 
-scannerPage.style.display="none"
+scanBody.innerHTML=""
 
-renderSummary()
-
-summaryPage.style.display="block"
-
-}
-
-function renderSummary(){
-
-summaryBody.innerHTML=""
-
-session.forEach((s,i)=>{
+session.forEach(s=>{
 
 let tr=document.createElement("tr")
 
@@ -444,78 +361,75 @@ tr.innerHTML=`
 <td>${s.date}</td>
 <td>${s.itemNo}</td>
 <td>${s.description}</td>
-<td contenteditable="true">${s.qty}</td>
+<td>${s.qty}</td>
 `
 
-tr.onclick=function(){
-
-document.querySelectorAll("#summaryBody tr").forEach(r=>r.classList.remove("selected"))
-
-tr.classList.add("selected")
-
-selectedRow=i
-
-}
-
-summaryBody.appendChild(tr)
+scanBody.appendChild(tr)
 
 })
 
 }
 
-deleteRow.onclick=function(){
 
-if(selectedRow===null)return
+doneBtn.onclick=function(){
 
-session.splice(selectedRow,1)
+scanner.stop()
 
-renderSummary()
+document.querySelectorAll("#scanBody td:last-child")
+.forEach(td=>td.contentEditable=true)
 
-}
+let btn=document.createElement("button")
+btn.innerText="CONFIRM"
 
-summaryBack.onclick=function(){
+btn.onclick=confirmLog
 
-summaryPage.style.display="none"
-scannerPage.style.display="block"
-
-scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
+scannerPage.appendChild(btn)
 
 }
 
-confirmBtn.onclick=async function(){
+
+async function confirmLog(){
+
+const items=session.map(r=>({
+is:isDropdown.value,
+transaction:transactionType.value,
+name:nameInput.value,
+itemNo:r.itemNo,
+description:r.description,
+qty:r.qty,
+user:currentUser
+}))
 
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
 body:new URLSearchParams({
 action:"logBatch",
-items:JSON.stringify(session.map(s=>({
-is:isDropdown.value,
-transaction:transactionType.value,
-name:nameInput.value,
-itemNo:s.itemNo,
-description:s.description,
-qty:s.qty,
-user:currentUser
-})))
+items:JSON.stringify(items)
 })
 })
 
 const data=await res.json()
 
-successMsg.innerHTML=`<span class="greenMsg">✔ ${data.count} transactions successfully recorded</span>`
+scannerPage.style.display="none"
+
+confirmPage.style.display="block"
+
+confirmMsg.innerHTML=`<span class="success">✔ ${data.count} transactions successfully recorded</span>`
 
 session=[]
 
 }
 
+
 function backMenu(){
 
 menuPage.style.display="block"
-transactionPage.style.display="none"
-scannerPage.style.display="none"
-summaryPage.style.display="none"
+
 checkPage.style.display="none"
 inventoryPage.style.display="none"
+transactionPage.style.display="none"
+scannerPage.style.display="none"
+confirmPage.style.display="none"
 
 }
 
