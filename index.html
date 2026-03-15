@@ -94,6 +94,7 @@ tr.selected{background-color:#ffd;}
 <div id="sessionButtons" style="display:none">
   <button id="backBtn">BACK</button>
   <button id="confirmBtn">CONFIRM</button>
+  <span id="actionSpinner"></span>
 </div>
 
 <p id="confirmation"></p>
@@ -125,14 +126,15 @@ async function login(){
       body:new URLSearchParams({action:"login", username, password})
     })
     const data=await res.json()
-    document.getElementById("loginSpinner").innerHTML=""
     if(data.status==="success"){
       currentUser=username
       document.getElementById("loginPage").style.display="none"
       document.getElementById("scannerPage").style.display="block"
-      loadDropdowns()
+      await loadDropdowns()
+      document.getElementById("loginSpinner").innerHTML=""
     } else {
       document.getElementById("loginMsg").innerText="Invalid login"
+      document.getElementById("loginSpinner").innerHTML=""
     }
   }catch(err){
     document.getElementById("loginMsg").innerText="Connection error"
@@ -142,6 +144,7 @@ async function login(){
 
 // LOAD DROPDOWNS
 async function loadDropdowns(){
+  document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
   const res=await fetch(WEBAPP_URL,{
     method:"POST",
     body:new URLSearchParams({action:"getDropdowns"})
@@ -150,12 +153,14 @@ async function loadDropdowns(){
   suppliers=data.suppliers
   personnel=data.personnel
   const isDrop=document.getElementById("isDropdown")
+  isDrop.innerHTML=""
   data.isList.forEach(v=>{
     let opt=document.createElement("option")
     opt.text=v
     isDrop.add(opt)
   })
   updateNames()
+  document.getElementById("loginSpinner").innerHTML=""
 }
 
 // AUTOCOMPLETE
@@ -222,7 +227,7 @@ function scanSuccess(decodedText){
   }
   sessionScans.push(scanData)
   renderPreviewTable()
-  setTimeout(()=>{scanning=true},750) // 0.75 second delay
+  setTimeout(()=>{scanning=true},1000) // 1 second delay
 }
 
 // RENDER PREVIEW TABLE WITH ROW SELECTION
@@ -243,11 +248,13 @@ function renderPreviewTable(){
 
 // DONE BUTTON
 document.getElementById("doneBtn").addEventListener("click",()=>{
+  document.getElementById("actionSpinner").innerHTML='<span class="spinner"></span>'
   scanner.stop().then(()=>{
     document.getElementById("reader").style.display="none"
     document.getElementById("sessionPreview").style.display="block"
     document.getElementById("sessionButtons").style.display="block"
     document.getElementById("doneBtn").style.display="none"
+    document.getElementById("actionSpinner").innerHTML=""
   })
 })
 
@@ -262,6 +269,7 @@ document.getElementById("backBtn").addEventListener("click",()=>{
 
 // CONFIRM BUTTON
 document.getElementById("confirmBtn").addEventListener("click", async()=>{
+  document.getElementById("actionSpinner").innerHTML='<span class="spinner"></span>'
   for(const s of sessionScans){
     try{
       await fetch(WEBAPP_URL,{
@@ -288,6 +296,7 @@ document.getElementById("confirmBtn").addEventListener("click", async()=>{
   document.getElementById("reader").style.display="block"
   document.getElementById("startScanner").style.display="inline-block"
   document.getElementById("scanned").innerText="None"
+  document.getElementById("actionSpinner").innerHTML=""
 })
 
 // DELETE SELECTED ROW
