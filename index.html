@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>LEGA-Z</title>
 
@@ -19,20 +19,26 @@ padding:20px;
 }
 
 .gold{
-font-size:50px;
+font-size:48px;
 font-weight:bold;
 background:linear-gradient(45deg,#c9a227,#ffd700,#c9a227);
 -webkit-background-clip:text;
 color:transparent;
 }
 
-.subtitle{
-font-weight:bold;
+.spinner{
+border:6px solid #1e293b;
+border-top:6px solid #ffd700;
+border-radius:50%;
+width:60px;
+height:60px;
+animation:spin 1s linear infinite;
+margin:auto;
 }
 
-.small{
-font-size:12px;
-color:#ffd700;
+@keyframes spin{
+0%{transform:rotate(0deg)}
+100%{transform:rotate(360deg)}
 }
 
 button,input,select{
@@ -42,17 +48,9 @@ border-radius:6px;
 border:none;
 }
 
-button{
-background:#06b6d4;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-
 table{
 border-collapse:collapse;
 width:100%;
-margin:auto;
 }
 
 th,td{
@@ -65,7 +63,19 @@ width:300px;
 margin:auto;
 }
 
-.selected{
+.suggest{
+background:#1e293b;
+border:1px solid #334155;
+max-height:150px;
+overflow:auto;
+}
+
+.suggest div{
+padding:5px;
+cursor:pointer;
+}
+
+.suggest div:hover{
 background:#334155;
 }
 
@@ -75,40 +85,44 @@ background:#334155;
 
 <body>
 
+<!-- LOGIN -->
+
 <div id="loginPage">
 
 <div class="gold">LEGA-Z</div>
 
-<div class="subtitle">SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</div>
+<b>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</b>
 
-<div class="small">YURI</div>
+<div style="color:#ffd700;font-size:12px">by YURI</div>
 
 <br>
 
 <input id="username" placeholder="Username">
-
 <input id="password" type="password" placeholder="Password">
 
 <br>
 
 <button onclick="login()">SIGN IN</button>
 
+<div id="loginLoad"></div>
+
 </div>
 
+
+<!-- MENU -->
 
 <div id="menuPage" style="display:none">
 
 <h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
 
 <button onclick="openCheck()">CHECK ITEM</button>
-
 <button onclick="openInventory()">INVENTORY</button>
-
 <button onclick="openTransactions()">TRANSACTIONS</button>
 
 </div>
 
 
+<!-- CHECK ITEM -->
 
 <div id="checkPage" style="display:none">
 
@@ -117,9 +131,7 @@ background:#334155;
 <div id="readerCheck"></div>
 
 <p>Item: <span id="ciItem"></span></p>
-
 <p>Description: <span id="ciDesc"></span></p>
-
 <p>Available: <span id="ciQty"></span></p>
 
 <button onclick="backMenu()">BACK</button>
@@ -127,12 +139,15 @@ background:#334155;
 </div>
 
 
+<!-- INVENTORY -->
 
 <div id="inventoryPage" style="display:none">
 
 <h3>INVENTORY</h3>
 
-<table>
+<div id="inventoryLoad" class="spinner"></div>
+
+<table id="inventoryTable" style="display:none">
 
 <thead>
 <tr>
@@ -151,10 +166,15 @@ background:#334155;
 </div>
 
 
+<!-- TRANSACTIONS -->
 
 <div id="scannerPage" style="display:none">
 
 <h3>TRANSACTIONS</h3>
+
+<div style="display:flex;justify-content:space-between">
+
+<select id="isDropdown"></select>
 
 <select id="transaction">
 <option>RECEIVED</option>
@@ -164,7 +184,11 @@ background:#334155;
 <option>RETURNED</option>
 </select>
 
-<br>
+</div>
+
+<input id="nameInput" placeholder="Name">
+
+<div id="nameSuggest" class="suggest"></div>
 
 <button id="startScanner">START SCANNING</button>
 <button id="doneBtn">DONE</button>
@@ -182,6 +206,7 @@ background:#334155;
 <th>Description</th>
 <th>Qty</th>
 </tr>
+
 </thead>
 
 <tbody id="tableBody"></tbody>
@@ -196,23 +221,24 @@ background:#334155;
 </div>
 
 
-
 <script>
 
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
+let suppliers=[]
+let personnel=[]
 let scanner
-let scanning=true
 let session=[]
-let selectedRow=null
+let scanning=true
 let currentUser=""
 
 function beep(){
 new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
 }
 
-
 async function login(){
+
+loginLoad.innerHTML='<div class="spinner"></div>'
 
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
@@ -225,12 +251,16 @@ password:password.value
 
 const data=await res.json()
 
+loginLoad.innerHTML=""
+
 if(data.status==="success"){
 
 currentUser=username.value
 
 loginPage.style.display="none"
 menuPage.style.display="block"
+
+loadDropdowns()
 
 }else{
 
@@ -240,17 +270,34 @@ alert("Invalid Login")
 
 }
 
+async function loadDropdowns(){
+
+const res=await fetch(WEBAPP_URL,{
+method:"POST",
+body:new URLSearchParams({action:"getDropdowns"})
+})
+
+const data=await res.json()
+
+suppliers=data.suppliers
+personnel=data.personnel
+
+data.isList.forEach(v=>{
+let o=document.createElement("option")
+o.text=v
+isDropdown.add(o)
+})
+
+}
 
 function backMenu(){
 
 menuPage.style.display="block"
-scannerPage.style.display="none"
-inventoryPage.style.display="none"
 checkPage.style.display="none"
+inventoryPage.style.display="none"
+scannerPage.style.display="none"
 
 }
-
-
 
 function openCheck(){
 
@@ -260,6 +307,8 @@ checkPage.style.display="block"
 const scan=new Html5Qrcode("readerCheck")
 
 scan.start({facingMode:"environment"},{fps:10,qrbox:250},async(text)=>{
+
+beep()
 
 const[itemNo]=text.split("|")
 
@@ -281,18 +330,17 @@ ciQty.innerText=data.qty
 
 }
 
-
-
 async function openInventory(){
 
 menuPage.style.display="none"
 inventoryPage.style.display="block"
 
+inventoryLoad.style.display="block"
+inventoryTable.style.display="none"
+
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
-body:new URLSearchParams({
-action:"inventory"
-})
+body:new URLSearchParams({action:"inventory"})
 })
 
 const data=await res.json()
@@ -313,9 +361,10 @@ inventoryBody.appendChild(tr)
 
 }
 
+inventoryLoad.style.display="none"
+inventoryTable.style.display="table"
+
 }
-
-
 
 function openTransactions(){
 
@@ -326,19 +375,19 @@ scanner=new Html5Qrcode("reader")
 
 startScanner.onclick=function(){
 
-scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
+scanner.start(
+{facingMode:"environment"},
+{fps:10,qrbox:250},
+scanSuccess
+)
 
 }
 
 doneBtn.onclick=function(){
-
 scanner.stop()
-
 }
 
 }
-
-
 
 function scanSuccess(text){
 
@@ -350,11 +399,11 @@ beep()
 
 const[itemNo,description]=text.split("|")
 
-let existing=session.find(s=>s.itemNo===itemNo)
+let found=session.find(s=>s.itemNo===itemNo)
 
-if(existing){
+if(found){
 
-existing.qty++
+found.qty++
 
 }else{
 
@@ -375,13 +424,11 @@ scanning=true
 
 }
 
-
-
 function renderTable(){
 
 tableBody.innerHTML=""
 
-session.forEach((s,i)=>{
+session.forEach(s=>{
 
 let tr=document.createElement("tr")
 
@@ -392,16 +439,6 @@ tr.innerHTML=`
 <td contenteditable="true">${s.qty}</td>
 `
 
-tr.onclick=function(){
-
-document.querySelectorAll("#tableBody tr").forEach(r=>r.classList.remove("selected"))
-
-tr.classList.add("selected")
-
-selectedRow=i
-
-}
-
 tableBody.appendChild(tr)
 
 })
@@ -410,39 +447,21 @@ scanCount.innerText=session.length
 
 }
 
-
-
-deleteBtn.onclick=function(){
-
-if(selectedRow===null)return
-
-session.splice(selectedRow,1)
-
-renderTable()
-
-}
-
-
-
 confirmBtn.onclick=async function(){
-
-const payload=session.map(s=>({
-
-is:"",
-transaction:transaction.value,
-name:"",
-itemNo:s.itemNo,
-description:s.description,
-qty:s.qty,
-user:currentUser
-
-}))
 
 await fetch(WEBAPP_URL,{
 method:"POST",
 body:new URLSearchParams({
 action:"logBatch",
-items:JSON.stringify(payload)
+items:JSON.stringify(session.map(s=>({
+is:isDropdown.value,
+transaction:transaction.value,
+name:nameInput.value,
+itemNo:s.itemNo,
+description:s.description,
+qty:s.qty,
+user:currentUser
+})))
 })
 })
 
