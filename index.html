@@ -77,16 +77,16 @@ async function login(){
 const username=document.getElementById("username").value
 const password=document.getElementById("password").value
 
+const formData=new FormData()
+formData.append("action","login")
+formData.append("username",username)
+formData.append("password",password)
+
 try{
 
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-action:"login",
-username:username,
-password:password
-})
+body:formData
 })
 
 const data=await res.json()
@@ -117,10 +117,12 @@ document.getElementById("loginMsg").innerText="Connection error"
 
 async function loadDropdowns(){
 
+const formData=new FormData()
+formData.append("action","getDropdowns")
+
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({action:"getDropdowns"})
+body:formData
 })
 
 const data=await res.json()
@@ -195,20 +197,19 @@ document.getElementById("scanned").innerText=decodedText
 
 const [itemNo,description]=decodedText.split("|")
 
-const payload={
-action:"log",
-is:document.getElementById("isDropdown").value,
-transaction:document.getElementById("transaction").value,
-name:document.getElementById("nameDropdown").value,
-itemNo,
-description,
-user:currentUser
-}
+const formData=new FormData()
+
+formData.append("action","log")
+formData.append("is",document.getElementById("isDropdown").value)
+formData.append("transaction",document.getElementById("transaction").value)
+formData.append("name",document.getElementById("nameDropdown").value)
+formData.append("itemNo",itemNo)
+formData.append("description",description)
+formData.append("user",currentUser)
 
 await fetch(WEBAPP_URL,{
 method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(payload)
+body:formData
 })
 
 document.getElementById("confirmation").innerText="Logged "+itemNo
