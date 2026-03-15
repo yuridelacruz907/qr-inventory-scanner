@@ -1,88 +1,220 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Inventory QR Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body { font-family: Arial; text-align:center; padding:20px; }
-    #reader { width:300px; margin:auto; }
-    button { padding:12px 20px; font-size:16px; margin-top:10px; }
-    #confirmation { color:green; font-weight:bold; margin-top:10px; }
-  </style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory QR Scanner</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body {font-family:Arial;text-align:center;padding:20px}
+#reader{width:300px;margin:auto}
+select,input,button{padding:10px;margin:5px}
+</style>
+
 </head>
+
 <body>
+
+<!-- LOGIN PAGE -->
+
+<div id="loginPage">
+
+<h2>Login</h2>
+
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Password"><br>
+
+<button onclick="login()">Sign In</button>
+
+<p id="loginMsg"></p>
+
+</div>
+
+
+<!-- MAIN SCANNER PAGE -->
+
+<div id="scannerPage" style="display:none">
+
 <h2>Property Inventory QR Scanner</h2>
 
-<label>Transaction Type:</label>
-<select id="transaction">
-  <option value="RECEIVED">RECEIVED</option>
-  <option value="ISSUED" selected>ISSUED</option>
-  <option value="TRANSFERRED">TRANSFERRED</option>
-  <option value="INVENTORY COUNT">INVENTORY COUNT</option>
-  <option value="RETURNED">RETURNED</option>
-</select>
+<label>IS:</label><br>
+<select id="isDropdown"></select><br>
 
-<p>
-  <button id="startScanner">Start Scanner</button>
-</p>
+<label>Transaction:</label><br>
+<select id="transaction">
+<option>RECEIVED</option>
+<option>ISSUED</option>
+<option>TRANSFERRED</option>
+<option>INVENTORY COUNT</option>
+<option>RETURNED</option>
+</select><br>
+
+<label>Name:</label><br>
+<select id="nameDropdown"></select><br>
+
+<button id="startScanner">Start Scanner</button>
 
 <div id="reader"></div>
-<p>Scanned QR: <span id="scanned">None</span></p>
-<button id="addBtn" disabled>Add to Google Sheet</button>
+
+<p>Last Scan: <span id="scanned">None</span></p>
+
 <p id="confirmation"></p>
 
+</div>
+
+
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxz6oDkKh8Qkss4DeXnVYsK7AMRk7AerViG5F8BGUZ3WMeh4zvo0xgDzWOvpKJ8ugOu/exec"; // Replace with your Web App URL
-let lastScanned = "";
-let scanner;
 
-// Start scanner on button click (required for mobile camera permission)
-document.getElementById("startScanner").addEventListener("click", () => {
-  scanner = new Html5Qrcode("reader");
-  scanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
-    (decodedText) => {
-      lastScanned = decodedText;
-      document.getElementById("scanned").textContent = decodedText;
-      document.getElementById("addBtn").disabled = false;
-      document.getElementById("confirmation").textContent = "";
-    },
-    (errorMessage) => {
-      // ignore scan errors
-    }
-  ).catch(err => alert("Camera access denied or unavailable."));
-});
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbxz6oDkKh8Qkss4DeXnVYsK7AMRk7AerViG5F8BGUZ3WMeh4zvo0xgDzWOvpKJ8ugOu/exec"
 
-// Add scanned QR to Google Sheet
-document.getElementById("addBtn").addEventListener("click", async () => {
-  if (!lastScanned) return;
+let currentUser=""
+let suppliers=[]
+let personnel=[]
 
-  const transaction = document.getElementById("transaction").value;
-  const [itemNo, description] = lastScanned.split("|");
+function beep(){
+  const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+  audio.play()
+}
 
-  try {
-    const res = await fetch(WEBAPP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemNo, description, transaction })
-    });
+async function login(){
 
-    if (res.ok) {
-      document.getElementById("confirmation").textContent =
-        `✅ Transaction encoded: ${itemNo} | ${description} [${transaction}]`;
-      document.getElementById("scanned").textContent = "None";
-      document.getElementById("addBtn").disabled = true;
-      lastScanned = "";
-    } else {
-      throw new Error("Failed to log transaction");
-    }
-  } catch (err) {
-    console.error(err);
-    document.getElementById("confirmation").textContent = "❌ Failed to log transaction!";
-  }
-});
+const username=document.getElementById("username").value
+const password=document.getElementById("password").value
+
+const res=await fetch(WEBAPP_URL,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+action:"login",
+username,
+password
+})
+})
+
+const data=await res.json()
+
+if(data.status=="success"){
+
+currentUser=username
+
+document.getElementById("loginPage").style.display="none"
+document.getElementById("scannerPage").style.display="block"
+
+loadDropdowns()
+
+}
+else{
+document.getElementById("loginMsg").innerText="Invalid login"
+}
+
+}
+
+
+async function loadDropdowns(){
+
+const res=await fetch(WEBAPP_URL,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({action:"getDropdowns"})
+})
+
+const data=await res.json()
+
+suppliers=data.suppliers
+personnel=data.personnel
+
+const isDrop=document.getElementById("isDropdown")
+data.isList.forEach(v=>{
+let opt=document.createElement("option")
+opt.text=v
+isDrop.add(opt)
+})
+
+updateNames()
+
+}
+
+
+document.getElementById("transaction").addEventListener("change",updateNames)
+
+function updateNames(){
+
+const transaction=document.getElementById("transaction").value
+const nameDrop=document.getElementById("nameDropdown")
+
+nameDrop.innerHTML=""
+
+let list=[]
+
+if(transaction=="RECEIVED"){
+list=suppliers
+}else if(transaction=="ISSUED"){
+list=personnel
+}
+
+list.forEach(v=>{
+let opt=document.createElement("option")
+opt.text=v
+nameDrop.add(opt)
+})
+
+}
+
+
+let scanner
+let scanning=true
+
+document.getElementById("startScanner").addEventListener("click",()=>{
+
+scanner=new Html5Qrcode("reader")
+
+scanner.start(
+{facingMode:"environment"},
+{fps:10,qrbox:250},
+scanSuccess
+)
+
+})
+
+
+async function scanSuccess(decodedText){
+
+if(!scanning)return
+
+scanning=false
+
+beep()
+
+document.getElementById("scanned").innerText=decodedText
+
+const [itemNo,description]=decodedText.split("|")
+
+const payload={
+action:"log",
+is:document.getElementById("isDropdown").value,
+transaction:document.getElementById("transaction").value,
+name:document.getElementById("nameDropdown").value,
+itemNo,
+description,
+user:currentUser
+}
+
+await fetch(WEBAPP_URL,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(payload)
+})
+
+document.getElementById("confirmation").innerText="Logged "+itemNo
+
+setTimeout(()=>{
+scanning=true
+},1000)
+
+}
+
 </script>
+
 </body>
 </html>
