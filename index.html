@@ -2,219 +2,148 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LEGA-Z Inventory</title>
+<title>LEGA-Z</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
-body { font-family: Arial; background: #0f172a; color: white; text-align: center; padding: 20px; }
-h1 { font-size: 48px; margin-bottom: 0; letter-spacing: 3px; background: linear-gradient(to right, gold, #ffd700); -webkit-background-clip: text; color: transparent;}
-h2 { margin-top:5px; font-weight: 400; }
-.small { font-size: 12px; color: silver; margin-bottom: 15px; }
-.container{max-width:480px;margin:auto;}
-.row{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px;}
-input,select,button{padding:10px;margin:5px;border-radius:6px;border:none;width:100%;}
-button{background:#06b6d4;color:white;font-weight:bold;cursor:pointer;}
-button:hover{background:#0891b2;}
-#reader{width:300px;margin:auto;}
-.spinner{border:4px solid #f3f3f3;border-top:4px solid #06b6d4;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite;display:inline-block;margin-left:10px;}
-@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-table{border-collapse:collapse;margin:10px auto;width:100%;}
+body{font-family:Arial; background:#0f172a; color:white; text-align:center; padding:20px;}
+.gold{font-size:48px;font-weight:bold;background:linear-gradient(45deg,#c9a227,#ffd700,#c9a227);-webkit-background-clip:text;color:transparent;}
+.silver{color:silver;font-size:12px;}
+.spinner{border:6px solid #1e293b;border-top:6px solid #3b82f6;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:auto;}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+button,input,select{padding:10px;margin:5px;border-radius:6px;border:none;}
+button{background:#2563eb;color:white;cursor:pointer;}
+table{border-collapse:collapse;width:100%;margin-top:10px;}
 th,td{border:1px solid #334155;padding:6px;}
-tr.selected{background:#334155;}
-#nameSuggestions{background:#1e293b;border:1px solid #334155;max-height:150px;overflow:auto;}
-#nameSuggestions div{padding:5px;cursor:pointer;}
-#nameSuggestions div:hover{background:#334155;}
-.counter{margin:10px;font-weight:bold;color:#22c55e;}
+#reader,#readerCheck{width:300px;margin:auto;}
+.success{color:#22c55e;font-weight:bold;font-size:18px;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN PAGE -->
-<div id="loginPage" class="container">
-<h1>LEGA - Z</h1>
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
-<div class="small">by YURI</div>
+<!-- LOGIN -->
+<div id="loginPage">
+<div class="gold">LEGA-Z</div>
+<b>SPGUG-LOD INVENTORY MANAGEMENT SYSTEM</b>
+<div class="silver">by YURI</div><br>
 <input id="username" placeholder="Username">
-<input id="password" type="password" placeholder="Password">
-<button onclick="login()">Sign In</button>
-<div id="loginSpinner"></div>
-<p id="loginMsg"></p>
+<input id="password" type="password" placeholder="Password"><br>
+<button onclick="login()">SIGN IN</button>
+<div id="loginLoad"></div>
 </div>
 
-<!-- OPTION PAGE -->
-<div id="optionPage" class="container" style="display:none;">
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
-<button onclick="selectOption('check')">CHECK ITEM</button>
-<button onclick="selectOption('inventory')">INVENTORY</button>
-<button onclick="selectOption('transactions')">TRANSACTIONS</button>
-<div id="optionSpinner"></div>
+<!-- OPTIONS -->
+<div id="menuPage" style="display:none">
+<h2>OPTIONS</h2>
+<button onclick="openCheck()">CHECK ITEM</button>
+<button onclick="openInventory()">INVENTORY</button>
+<button onclick="openTransactions()">TRANSACTIONS</button>
 </div>
 
-<!-- SCANNER & CONTENT -->
-<div id="scannerPage" class="container" style="display:none;">
-<div id="scannerHeader"></div>
-<div class="row">
-<div style="flex:1">
-<label>IS</label>
+<!-- CHECK ITEM -->
+<div id="checkPage" style="display:none">
+<h3>CHECK ITEM</h3>
+<div id="readerCheck"></div>
+<p>Item: <span id="ciItem"></span></p>
+<p>Description: <span id="ciDesc"></span></p>
+<p>Available: <span id="ciQty"></span></p>
+<button onclick="backMenu()">BACK</button>
+</div>
+
+<!-- INVENTORY -->
+<div id="inventoryPage" style="display:none">
+<h3>INVENTORY</h3>
+<div id="inventoryLoad" class="spinner"></div>
+<table id="inventoryTable" style="display:none">
+<thead><tr><th>Item</th><th>Description</th><th>Stock</th></tr></thead>
+<tbody id="inventoryBody"></tbody>
+</table>
+<button onclick="backMenu()">BACK</button>
+</div>
+
+<!-- TRANSACTIONS -->
+<div id="transactionPage" style="display:none">
+<h3>TRANSACTIONS</h3>
 <select id="isDropdown"></select>
-</div>
-<div style="flex:1">
-<label>Transaction</label>
-<select id="transaction">
+<select id="transactionType">
 <option>RECEIVED</option>
 <option>ISSUED</option>
 <option>TRANSFERRED</option>
-<option>INVENTORY COUNT</option>
 <option>RETURNED</option>
+<option>INVENTORY COUNT</option>
 </select>
+<input id="nameInput" placeholder="Name">
+<button id="startBtn">START SCANNING</button>
+<button onclick="backMenu()">BACK</button>
 </div>
-</div>
-<label>Name</label>
-<input id="nameInput" placeholder="Type name">
-<div id="nameSuggestions"></div>
-<button id="startScanner" disabled>Start Scanning</button>
-<button id="doneBtn" style="display:none">DONE</button>
-<button id="backToOptionsBtn">BACK</button>
-<div id="processSpinner"></div>
+
+<!-- SCANNER -->
+<div id="scannerPage" style="display:none">
 <div id="reader"></div>
-<div class="counter">Scanned Items: <span id="scanCount">0</span></div>
-
-<!-- SESSION TABLE -->
-<div id="sessionPreview" style="display:none;">
-<h3>Scanned Items</h3>
-<table id="previewTable">
-<thead>
-<tr>
-<th>Date</th>
-<th>Item No</th>
-<th>Description</th>
-<th>Quantity</th>
-</tr>
-</thead>
-<tbody></tbody>
+<button id="doneBtn">DONE</button>
+<button id="scanBack">BACK</button>
+<table>
+<thead><tr><th>Date</th><th>Item</th><th>Description</th><th>Qty</th></tr></thead>
+<tbody id="scanBody"></tbody>
 </table>
-<button id="deleteRowBtn">DELETE</button>
-<button id="backBtn">BACK</button>
-<button id="confirmBtn">CONFIRM</button>
 </div>
 
-<!-- INVENTORY DASHBOARD -->
-<div id="inventoryPage" style="display:none;">
-<h3>Inventory Dashboard</h3>
-<div id="inventorySpinner"><span class="spinner"></span></div>
-<table id="inventoryTable"></table>
-<button onclick="backToOptions()">BACK</button>
+<!-- CONFIRM -->
+<div id="confirmPage" style="display:none">
+<p id="confirmMsg"></p>
+<button onclick="backMenu()">BACK</button>
 </div>
 
 <script>
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
-let currentUser="",suppliers=[],personnel=[],scanner,scanning=true,sessionScans=[],selectedRowIndex=null;
-let currentOption="";
+let scanner,session=[],scanning=true,currentUser="";
 
-// LOGIN
+function beep(){new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();}
+
 async function login(){
-document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>';
-try{
-const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"login", username:username.value,password:password.value})});
-const data=await res.json();
-document.getElementById("loginSpinner").innerHTML="";
-if(data.status==="success"){currentUser=username.value;loginPage.style.display="none";optionPage.style.display="block";loadDropdowns();}
-else loginMsg.innerText="Invalid login";
-}catch{loginMsg.innerText="Connection error";}
+loginLoad.innerHTML='<div class="spinner"></div>'
+const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"login",username:username.value,password:password.value})});
+const data=await res.json();loginLoad.innerHTML="";
+if(data.status==="success"){currentUser=username.value;loginPage.style.display="none";menuPage.style.display="block";loadDropdowns();}
 }
 
-// LOAD DROPDOWNS
 async function loadDropdowns(){
 const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getDropdowns"})});
 const data=await res.json();
-suppliers=data.suppliers;personnel=data.personnel;
 data.isList.forEach(v=>{let o=document.createElement("option");o.text=v;isDropdown.add(o);});
-updateNames();
 }
 
-// AUTOCOMPLETE
-function setupAutocomplete(list){
-nameInput.oninput=function(){
-const value=this.value.toLowerCase();
-nameSuggestions.innerHTML="";
-if(!value)return;
-list.filter(n=>n.toLowerCase().includes(value)).slice(0,10).forEach(name=>{
-const div=document.createElement("div");div.textContent=name;div.onclick=()=>{nameInput.value=name;nameSuggestions.innerHTML="";};nameSuggestions.appendChild(div);
+function openCheck(){
+menuPage.style.display="none";
+checkPage.style.display="block";
+const ciReader = new Html5Qrcode("readerCheck");
+ciReader.start({facingMode:"environment"},{fps:10,qrbox:250}, async decoded=>{
+beep();
+const res = await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"checkItem",itemNo:decoded})});
+const data=await res.json();
+ciItem.innerText=data.itemNo; ciDesc.innerText=data.description; ciQty.innerText=data.qty;
 });
-};
 }
 
-// UPDATE NAMES BASED ON TRANSACTION
-transaction.onchange=updateNames;
-function updateNames(){let list=[];nameInput.value="";if(transaction.value==="RECEIVED") list=suppliers;if(transaction.value==="ISSUED") list=personnel;setupAutocomplete(list);checkStartButton();}
-function checkStartButton(){startScanner.disabled=!(isDropdown.value && transaction.value && nameInput.value);}
-
-// SELECT OPTION
-function selectOption(opt){
-currentOption=opt;
-optionPage.style.display="none";
-scannerPage.style.display="none";
-inventoryPage.style.display="none";
-sessionPreview.style.display="none";
-if(opt==="check"||opt==="transactions") scannerPage.style.display="block";
-else if(opt==="inventory") loadInventory();
+function openInventory(){
+menuPage.style.display="none"; inventoryPage.style.display="block";
+fetchInventory();
 }
 
-// BACK TO OPTIONS
-backToOptionsBtn.onclick=()=>{scannerPage.style.display="none";inventoryPage.style.display="none";optionPage.style.display="block";};
-
-// SCANNER START
-startScanner.onclick=function(){
-startScanner.style.display="none";doneBtn.style.display="inline-block";
-scanner=new Html5Qrcode("reader");scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess);
-};
-
-// SCAN SUCCESS
-function scanSuccess(decodedText){
-if(!scanning)return;scanning=false;
-beep();scanned.innerText=decodedText;
-const[itemNo,description]=decodedText.split("|");
-if(currentOption==="check"){
-fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getItem",itemNo})}).then(r=>r.json()).then(data=>{
-scanned.innerHTML=`Item: ${itemNo}<br>Description: ${data.description}<br>Total Quantity: ${data.quantity}`;scanning=false;setTimeout(()=>{scanning=true;},1000);
-});
-}else{
-let idx=sessionScans.findIndex(s=>s.itemNo===itemNo);
-if(idx>-1) sessionScans[idx].quantity+=1; else sessionScans.push({date:new Date().toLocaleString(),itemNo,description,quantity:1});
-renderTable();scanCount.innerText=sessionScans.length;setTimeout(()=>{scanning=true;},1000);
-}
+async function fetchInventory(){
+inventoryLoad.style.display="block"; inventoryTable.style.display="none";
+const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"inventory"})});
+const data=await res.json(); inventoryBody.innerHTML="";
+for(const k in data){
+const row=data[k];
+let tr=document.createElement("tr");
+tr.innerHTML=`<td>${k}</td><td>${row.description}</td><td>${row.qty}</td>`;
+inventoryBody.appendChild(tr);}
+inventoryLoad.style.display="none"; inventoryTable.style.display="table";
 }
 
-// RENDER SESSION TABLE
-function renderTable(){
-const tbody=document.querySelector("#previewTable tbody");tbody.innerHTML="";
-sessionScans.forEach((s,i)=>{const tr=document.createElement("tr");
-tr.innerHTML=`<td>${s.date}</td><td contenteditable>${s.itemNo}</td><td contenteditable>${s.description}</td><td contenteditable>${s.quantity}</td>`;
-tr.onclick=()=>{document.querySelectorAll("#previewTable tr").forEach(r=>r.classList.remove("selected"));tr.classList.add("selected");selectedRowIndex=i;};
-tbody.appendChild(tr);});
-}
-
-// DONE BUTTON
-doneBtn.onclick=function(){scanner.stop().then(()=>{reader.style.display="none";sessionPreview.style.display="block";doneBtn.style.display="none";});};
-
-// DELETE ROW
-deleteRowBtn.onclick=function(){if(selectedRowIndex!==null){sessionScans.splice(selectedRowIndex,1);selectedRowIndex=null;renderTable();scanCount.innerText=sessionScans.length;}};
-
-// BACK BUTTON IN SESSION
-backBtn.onclick=function(){sessionPreview.style.display="none";scannerPage.style.display="block";};
-
-// CONFIRM BUTTON
-confirmBtn.onclick=async function(){
-for(const s of sessionScans){const qty=s.quantity;await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"log",is:isDropdown.value,transaction:transaction.value,name:nameInput.value,itemNo:s.itemNo,description:s.description,quantity:qty,user:currentUser})});}
-confirmation.innerHTML=`<span style="color:#22c55e;font-weight:bold;">✅ ${sessionScans.length} transactions successfully recorded</span>`;
-};
-
-// INVENTORY DASHBOARD
-async function loadInventory(){
-scannerPage.style.display="none";inventoryPage.style.display="block";inventorySpinner.style.display="block";
-const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getInventory"})});
-const data=await res.json();inventorySpinner.style.display="none";
-const table=document.getElementById("inventoryTable");table.innerHTML="<tr><th>Item No</th><th>Description</th><th>Quantity</th></tr>";
-for(const item in data){const r=table.insertRow();r.insertCell(0).innerText=item;r.insertCell(1).innerText=data[item].description;r.insertCell(2).innerText=data[item].quantity;}}
+function openTransactions(){menuPage.style.display="none"; transactionPage.style.display="block";}
+function backMenu(){menuPage.style.display="block"; checkPage.style.display="none"; inventoryPage.style.display="none"; transactionPage.style.display="none"; scannerPage.style.display="none"; confirmPage.style.display="none";}
 </script>
+
 </body>
 </html>
