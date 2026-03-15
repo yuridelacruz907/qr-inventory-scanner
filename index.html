@@ -1,70 +1,57 @@
 <!DOCTYPE html>
 <html>
-
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>LEGA-Z Inventory</title>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
+
 body{
-background:#0f172a;
-color:white;
 font-family:Arial;
+background:#0f1117;
+color:white;
 text-align:center;
 padding:20px;
 }
 
 .gold{
-background:linear-gradient(90deg,#d4af37,#ffd700,#b8962e);
+font-weight:bold;
+font-size:40px;
+background:linear-gradient(90deg,#c9a227,#ffd700,#c9a227);
 -webkit-background-clip:text;
--webkit-text-fill-color:transparent;
+color:transparent;
+}
+
+.subtitle{
 font-weight:bold;
+font-size:20px;
 }
 
-#titleMain{
-font-size:48px;
-letter-spacing:3px;
+.small{
+font-size:12px;
+color:#ccc;
 }
 
-#titleSub{
-font-size:18px;
-font-weight:bold;
-margin-bottom:20px;
-}
-
-.smallGold{
-font-size:14px;
-margin-top:5px;
-}
-
-.container{
-max-width:420px;
-margin:auto;
-}
-
-.row{
-display:flex;
-gap:10px;
-}
-
-select,input,button{
+input,select,button{
 padding:10px;
 margin:5px;
 border-radius:6px;
 border:none;
-width:100%;
 }
 
 button{
-background:#06b6d4;
-color:white;
+background:#00c2ff;
+color:black;
 font-weight:bold;
 cursor:pointer;
 }
 
 button:hover{
-background:#0891b2;
+background:#00e1ff;
 }
 
 #reader{
@@ -73,72 +60,87 @@ margin:auto;
 }
 
 table{
+width:95%;
+margin:auto;
 border-collapse:collapse;
-width:100%;
-margin-top:10px;
 }
 
 th,td{
-border:1px solid #334155;
+border:1px solid #444;
 padding:6px;
 }
 
-input.qty{
-width:70px;
-text-align:center;
-}
-
 .spinner{
-border:4px solid #ccc;
-border-top:4px solid #06b6d4;
+border:4px solid #333;
+border-top:4px solid #00c2ff;
 border-radius:50%;
-width:30px;
-height:30px;
+width:25px;
+height:25px;
 animation:spin 1s linear infinite;
-margin:auto;
+display:inline-block;
 }
 
 @keyframes spin{
-0%{transform:rotate(0)}
-100%{transform:rotate(360deg)}
+0%{transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
 }
+
+#suggestions{
+border:1px solid #444;
+max-height:150px;
+overflow-y:auto;
+background:#1a1d26;
+}
+
+.suggest-item{
+padding:6px;
+cursor:pointer;
+}
+
+.suggest-item:hover,
+.suggest-active{
+background:#00c2ff;
+color:black;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<div id="loginPage" class="container">
+<!-- LOGIN -->
 
-<div id="titleMain" class="gold">LEGA - Z</div>
-<div id="titleSub">SPGUG - LOD INVENTORY MONITORING SYSTEM</div>
-<div class="gold smallGold">YURI</div>
+<div id="loginPage">
+
+<div class="gold">LEGA-Z</div>
+
+<div class="subtitle">SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</div>
+
+<div class="small gold">YURI</div>
 
 <br>
 
-<input id="username" placeholder="Username">
-<input id="password" type="password" placeholder="Password">
+<input id="username" placeholder="Username"><br>
 
-<button onclick="login()">Sign In</button>
+<input id="password" type="password" placeholder="Password"><br>
 
-<div id="loginSpinner"></div>
-<p id="loginMsg"></p>
+<button onclick="login()">SIGN IN</button>
+
+<div id="loginSpin"></div>
 
 </div>
 
+<!-- MAIN -->
 
-<div id="scannerPage" class="container" style="display:none">
+<div id="mainPage" style="display:none">
 
-<div id="titleSub">SPGUG - LOD INVENTORY MONITORING SYSTEM</div>
+<h3 class="subtitle">SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h3>
 
-<div class="row">
+<div>
 
-<div style="flex:1">
-<label>IS</label>
 <select id="isDropdown"></select>
-</div>
 
-<div style="flex:1">
-<label>Transaction</label>
 <select id="transaction">
 <option>RECEIVED</option>
 <option>ISSUED</option>
@@ -146,119 +148,188 @@ margin:auto;
 <option>INVENTORY COUNT</option>
 <option>RETURNED</option>
 </select>
-</div>
 
 </div>
 
-<label>Name</label>
-<input id="nameInput">
+<input id="nameInput" placeholder="Type name">
 
-<button id="startScanner">Start Scanning</button>
+<div id="suggestions"></div>
+
+<br>
+
+<button id="startBtn">START SCANNING</button>
+
 <button id="doneBtn" style="display:none">DONE</button>
 
 <div id="reader"></div>
 
-<div>Scanned: <span id="scanCount">0</span></div>
-<p>Last Scan: <span id="scanned">None</span></p>
+<h4>Scans: <span id="scanCount">0</span></h4>
 
+<div id="preview" style="display:none">
 
-<div id="previewSection" style="display:none">
+<table>
 
-<table id="previewTable">
 <thead>
+
 <tr>
 <th>Date</th>
-<th>Item Number</th>
+<th>Item</th>
 <th>Description</th>
-<th>Quantity</th>
+<th>Qty</th>
 </tr>
+
 </thead>
-<tbody></tbody>
+
+<tbody id="tableBody"></tbody>
+
 </table>
+
+<br>
 
 <button id="deleteBtn">DELETE</button>
 <button id="backBtn">BACK</button>
 <button id="confirmBtn">CONFIRM</button>
+<button id="finishBtn" style="display:none">DONE</button>
 
 </div>
 
-
-<div id="doneAfterConfirm" style="display:none">
-<button id="finishBtn">DONE</button>
 </div>
-
-</div>
-
 
 <script>
 
-const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
+const API="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
 
-let scanner
-let scanning=true
+let suppliers=[]
+let personnel=[]
+let list=[]
+let selectedIndex=-1
+let session=[]
 let currentUser=""
-let sessionScans=[]
-let selectedIndex=null
+let scanner
 
-function beep(){
-new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
-}
+// LOGIN
 
 async function login(){
 
-loginSpinner.innerHTML='<div class="spinner"></div>'
+document.getElementById("loginSpin").innerHTML='<div class="spinner"></div>'
 
-const res=await fetch(WEBAPP_URL,{
+const username=username.value
+const password=password.value
+
+const res=await fetch(API,{
 method:"POST",
-body:new URLSearchParams({
-action:"login",
-username:username.value,
-password:password.value
-})
+body:new URLSearchParams({action:"login",username,password})
 })
 
 const data=await res.json()
 
-loginSpinner.innerHTML=""
+document.getElementById("loginSpin").innerHTML=""
 
 if(data.status==="success"){
 
-currentUser=username.value
+currentUser=username
 
 loginPage.style.display="none"
-scannerPage.style.display="block"
+mainPage.style.display="block"
 
 loadDropdowns()
 
 }else{
 
-loginMsg.innerText="Invalid login"
+alert("Invalid login")
 
 }
 
 }
+
+// DROPDOWNS
 
 async function loadDropdowns(){
 
-const res=await fetch(WEBAPP_URL,{
+const res=await fetch(API,{
 method:"POST",
 body:new URLSearchParams({action:"getDropdowns"})
 })
 
 const data=await res.json()
 
-data.isList.forEach(v=>{
+suppliers=data.suppliers
+personnel=data.personnel
+
+data.isList.forEach(i=>{
 let o=document.createElement("option")
-o.text=v
+o.text=i
 isDropdown.add(o)
 })
 
+updateList()
+
 }
 
-startScanner.onclick=function(){
+// LIST SWITCH
 
-startScanner.style.display="none"
-doneBtn.style.display="inline-block"
+transaction.onchange=updateList
+
+function updateList(){
+
+if(transaction.value==="RECEIVED")
+list=suppliers
+else
+list=personnel
+
+}
+
+// FUZZY SEARCH
+
+function fuzzyMatch(str,pattern){
+
+pattern=pattern.toLowerCase()
+
+let i=0
+
+for(let c of str.toLowerCase()){
+if(c===pattern[i]) i++
+}
+
+return i===pattern.length
+
+}
+
+nameInput.addEventListener("input",()=>{
+
+const v=nameInput.value
+
+suggestions.innerHTML=""
+
+if(!v) return
+
+const results=list.filter(n=>fuzzyMatch(n,v)).slice(0,8)
+
+results.forEach((r,i)=>{
+
+const div=document.createElement("div")
+
+div.className="suggest-item"
+
+div.innerText=r
+
+div.onclick=()=>{
+nameInput.value=r
+suggestions.innerHTML=""
+}
+
+suggestions.appendChild(div)
+
+})
+
+})
+
+// SCANNER
+
+startBtn.onclick=()=>{
+
+startBtn.style.display="none"
+doneBtn.style.display="inline"
 
 scanner=new Html5Qrcode("reader")
 
@@ -270,98 +341,74 @@ scanSuccess
 
 }
 
+// SCAN SUCCESS
+
 function scanSuccess(text){
 
-if(!scanning)return
+const [item,desc]=text.split("|")
 
-scanning=false
+const existing=session.find(s=>s.itemNo===item)
 
-beep()
+if(existing){
 
-scanned.innerText=text
+existing.qty++
 
-const[itemNo,description]=text.split("|")
+}else{
 
-sessionScans.push({
+session.push({
 date:new Date().toLocaleString(),
-itemNo,
-description,
+itemNo:item,
+description:desc,
 qty:1
 })
 
+}
+
 renderTable()
-
-scanCount.innerText=sessionScans.length
-
-setTimeout(()=>{scanning=true},1000)
 
 }
 
+// TABLE
+
 function renderTable(){
 
-const tbody=document.querySelector("#previewTable tbody")
+scanCount.innerText=session.length
 
-tbody.innerHTML=""
+tableBody.innerHTML=""
 
-sessionScans.forEach((s,i)=>{
+session.forEach((s,i)=>{
 
 const tr=document.createElement("tr")
 
-tr.innerHTML=`
-<td>${s.date}</td>
+tr.innerHTML=
+
+`<td>${s.date}</td>
 <td>${s.itemNo}</td>
 <td>${s.description}</td>
-<td><input class="qty" type="number" step="0.01" value="${s.qty}" onchange="sessionScans[${i}].qty=this.value"></td>
-`
+<td contenteditable="true">${s.qty}</td>`
 
-tr.onclick=()=>selectedIndex=i
-
-tbody.appendChild(tr)
+tableBody.appendChild(tr)
 
 })
 
 }
 
-doneBtn.onclick=function(){
+// DONE
+
+doneBtn.onclick=()=>{
 
 scanner.stop()
 
-previewSection.style.display="block"
+preview.style.display="block"
 
 }
 
-deleteBtn.onclick=function(){
+// CONFIRM
 
-if(selectedIndex==null)return
+confirmBtn.onclick=async()=>{
 
-sessionScans.splice(selectedIndex,1)
+const payload=session.map(s=>({
 
-renderTable()
-
-scanCount.innerText=sessionScans.length
-
-}
-
-backBtn.onclick=function(){
-
-previewSection.style.display="none"
-
-scanner.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-scanSuccess
-)
-
-}
-
-confirmBtn.onclick=async function(){
-
-for(const s of sessionScans){
-
-await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({
-action:"log",
 is:isDropdown.value,
 transaction:transaction.value,
 name:nameInput.value,
@@ -369,36 +416,33 @@ itemNo:s.itemNo,
 description:s.description,
 qty:s.qty,
 user:currentUser
-})
-})
 
-}
+}))
+
+await fetch(API,{
+method:"POST",
+body:new URLSearchParams({
+action:"logBatch",
+items:JSON.stringify(payload)
+})
+})
 
 confirmBtn.style.display="none"
-backBtn.style.display="none"
-deleteBtn.style.display="none"
-
-doneAfterConfirm.style.display="block"
+finishBtn.style.display="inline"
 
 }
 
-finishBtn.onclick=function(){
+// FINAL DONE
 
-sessionScans=[]
+finishBtn.onclick=()=>{
+
+session=[]
 
 renderTable()
 
-scanCount.innerText=0
+preview.style.display="none"
 
-previewSection.style.display="none"
-
-confirmBtn.style.display="inline-block"
-backBtn.style.display="inline-block"
-deleteBtn.style.display="inline-block"
-
-doneAfterConfirm.style.display="none"
-
-startScanner.style.display="inline-block"
+startBtn.style.display="inline"
 
 }
 
