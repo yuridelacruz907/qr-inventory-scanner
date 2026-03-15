@@ -7,7 +7,7 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body {font-family:Arial;text-align:center;padding:20px}
+body{font-family:Arial;text-align:center;padding:20px}
 #reader{width:300px;margin:auto}
 select,input,button{padding:10px;margin:5px}
 </style>
@@ -15,8 +15,6 @@ select,input,button{padding:10px;margin:5px}
 </head>
 
 <body>
-
-<!-- LOGIN PAGE -->
 
 <div id="loginPage">
 
@@ -31,8 +29,6 @@ select,input,button{padding:10px;margin:5px}
 
 </div>
 
-
-<!-- MAIN SCANNER PAGE -->
 
 <div id="scannerPage" style="display:none">
 
@@ -63,18 +59,17 @@ select,input,button{padding:10px;margin:5px}
 
 </div>
 
-
 <script>
 
-const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwi0IkB2bEq1c6c1ToAWg1t1U7pcSKZrgTbn09Ioav41OVy_Qr_XpkLyvXRDYkzcU75/exec"
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbxz6oDkKh8Qkss4DeXnVYsK7AMRk7AerViG5F8BGUZ3WMeh4zvo0xgDzWOvpKJ8ugOu/exec"
 
 let currentUser=""
 let suppliers=[]
 let personnel=[]
 
 function beep(){
-  const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
-  audio.play()
+const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+audio.play()
 }
 
 async function login(){
@@ -82,19 +77,21 @@ async function login(){
 const username=document.getElementById("username").value
 const password=document.getElementById("password").value
 
+try{
+
 const res=await fetch(WEBAPP_URL,{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
 action:"login",
-username,
-password
+username:username,
+password:password
 })
 })
 
 const data=await res.json()
 
-if(data.status=="success"){
+if(data.status==="success"){
 
 currentUser=username
 
@@ -103,9 +100,16 @@ document.getElementById("scannerPage").style.display="block"
 
 loadDropdowns()
 
-}
-else{
+}else{
+
 document.getElementById("loginMsg").innerText="Invalid login"
+
+}
+
+}catch(err){
+
+document.getElementById("loginMsg").innerText="Connection error"
+
 }
 
 }
@@ -125,6 +129,7 @@ suppliers=data.suppliers
 personnel=data.personnel
 
 const isDrop=document.getElementById("isDropdown")
+
 data.isList.forEach(v=>{
 let opt=document.createElement("option")
 opt.text=v
@@ -134,7 +139,6 @@ isDrop.add(opt)
 updateNames()
 
 }
-
 
 document.getElementById("transaction").addEventListener("change",updateNames)
 
@@ -147,9 +151,11 @@ nameDrop.innerHTML=""
 
 let list=[]
 
-if(transaction=="RECEIVED"){
+if(transaction==="RECEIVED"){
 list=suppliers
-}else if(transaction=="ISSUED"){
+}
+
+if(transaction==="ISSUED"){
 list=personnel
 }
 
@@ -176,7 +182,6 @@ scanSuccess
 )
 
 })
-
 
 async function scanSuccess(decodedText){
 
