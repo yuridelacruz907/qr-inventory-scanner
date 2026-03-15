@@ -3,13 +3,16 @@ name: Deploy Pages
 on:
   push:
     branches:
-      - main   # change this if your default branch is not 'main'
+      - main   # your default branch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write   # <--- THIS IS CRITICAL
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # ensures Node.js 24
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
