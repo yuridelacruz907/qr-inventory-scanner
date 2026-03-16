@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inventory QR Scanner</title>
+<title>Inventory QR Scanner - Session Mode</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -12,6 +12,22 @@ body{font-family:Arial;text-align:center;padding:20px}
 input,select,button{padding:10px;margin:5px}
 #nameSuggestions{border:1px solid #ccc; max-height:150px; overflow-y:auto; text-align:left; margin:auto; width:300px}
 #confirmation{color:green; font-weight:bold; margin-top:10px}
+.spinner{
+  border:4px solid #f3f3f3;
+  border-top:4px solid #3498db;
+  border-radius:50%;
+  width:30px;
+  height:30px;
+  animation:spin 1s linear infinite;
+  display:inline-block;
+  margin-left:10px;
+}
+@keyframes spin{
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.scanned-list{border:1px solid #ccc; max-height:200px; overflow-y:auto; margin:10px auto; width:300px; text-align:left; padding:5px;}
+.scanned-list p{margin:2px 0; padding:2px 5px; border-bottom:1px solid #eee;}
 </style>
 
 </head>
@@ -24,6 +40,7 @@ input,select,button{padding:10px;margin:5px}
 <input id="username" placeholder="Username"><br>
 <input id="password" type="password" placeholder="Password"><br>
 <button onclick="login()">Sign In</button>
+<span id="loginSpinner"></span>
 <p id="loginMsg"></p>
 </div>
 
@@ -47,21 +64,31 @@ input,select,button{padding:10px;margin:5px}
 <input id="nameInput" type="text" placeholder="Type name">
 <div id="nameSuggestions"></div>
 
-<button id="startScanner">Start Scanner</button>
+<button id="startScanner">Start Scanning</button>
+<button id="doneBtn" style="display:none">DONE</button>
 
 <div id="reader"></div>
 
 <p>Last Scan: <span id="scanned">None</span></p>
+
+<div id="sessionScans" class="scanned-list" style="display:none"></div>
+
+<div id="sessionButtons" style="display:none">
+  <button id="backBtn">BACK</button>
+  <button id="confirmBtn">CONFIRM</button>
+</div>
+
 <p id="confirmation"></p>
 </div>
 
 <script>
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
-
 let currentUser=""
 let suppliers=[]
 let personnel=[]
 let scanning=true
+let sessionScans=[] // store scans for this session
+let scanner
 
 // ---- BEEP FUNCTION ----
 function beep(){
@@ -73,16 +100,14 @@ function beep(){
 async function login(){
   const username=document.getElementById("username").value
   const password=document.getElementById("password").value
+  document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
   try{
     const res=await fetch(WEBAPP_URL,{
       method:"POST",
-      body:new URLSearchParams({
-        action:"login",
-        username:username,
-        password:password
-      })
+      body:new URLSearchParams({action:"login", username:username, password:password})
     })
     const data=await res.json()
+    document.getElementById("loginSpinner").innerHTML=""
     if(data.status==="success"){
       currentUser=username
       document.getElementById("loginPage").style.display="none"
@@ -93,6 +118,7 @@ async function login(){
     }
   }catch(err){
     document.getElementById("loginMsg").innerText="Connection error"
+    document.getElementById("loginSpinner").innerHTML=""
   }
 }
 
@@ -154,42 +180,93 @@ function updateNames(){
 
 // ---- START QR SCANNER ----
 document.getElementById("startScanner").addEventListener("click",()=>{
-  const scanner=new Html5Qrcode("reader")
-  scanner.start(
-    {facingMode:"environment"},
-    {fps:10,qrbox:250},
-    scanSuccess
-  )
+  document.getElementById("startScanner").style.display="none"
+  document.getElementById("doneBtn").style.display="inline-block"
+  scanner=new Html5Qrcode("reader")
+  scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
 })
 
 // ---- SCAN SUCCESS ----
-async function scanSuccess(decodedText){
+function scanSuccess(decodedText){
   if(!scanning) return
   scanning=false
   beep()
   document.getElementById("scanned").innerText=decodedText
   const [itemNo,description]=decodedText.split("|")
-  const payload={
-    action:"log",
+  const scanData={
     is:document.getElementById("isDropdown").value,
     transaction:document.getElementById("transaction").value,
     name:document.getElementById("nameInput").value,
-    itemNo:itemNo,
-    description:description,
-    user:currentUser
+    itemNo,
+    description
   }
-  try{
-    await fetch(WEBAPP_URL,{
-      method:"POST",
-      body:new URLSearchParams(payload)
-    })
-    document.getElementById("confirmation").innerText="✅ Logged "+itemNo
-  }catch(err){
-    document.getElementById("confirmation").innerText="❌ Failed to log transaction"
-  }
-  // Continue scanning after 0.5 second
+  sessionScans.push(scanData)
+  // Update session list
+  renderSessionList()
+  // Continue scanning after 0.5 sec
   setTimeout(()=>{scanning=true},500)
 }
+
+// ---- RENDER SESSION LIST ----
+function renderSessionList(){
+  const listDiv=document.getElementById("sessionScans")
+  listDiv.innerHTML=""
+  sessionScans.forEach((s,i)=>{
+    const p=document.createElement("p")
+    p.textContent=`${i+1}. ${s.itemNo} | ${s.description} | ${s.transaction} | ${s.name}`
+    listDiv.appendChild(p)
+  })
+}
+
+// ---- DONE BUTTON ----
+document.getElementById("doneBtn").addEventListener("click",()=>{
+  scanner.stop().then(()=>{
+    document.getElementById("reader").style.display="none"
+    document.getElementById("sessionScans").style.display="block"
+    document.getElementById("sessionButtons").style.display="block"
+    document.getElementById("doneBtn").style.display="none"
+  })
+})
+
+// ---- BACK BUTTON ----
+document.getElementById("backBtn").addEventListener("click",()=>{
+  document.getElementById("reader").style.display="block"
+  document.getElementById("sessionScans").style.display="none"
+  document.getElementById("sessionButtons").style.display="none"
+  document.getElementById("startScanner").style.display="inline-block"
+  sessionScans=[] // clear previous scans or keep as needed
+  document.getElementById("scanned").innerText="None"
+})
+
+// ---- CONFIRM BUTTON ----
+document.getElementById("confirmBtn").addEventListener("click", async()=>{
+  for(const s of sessionScans){
+    try{
+      await fetch(WEBAPP_URL,{
+        method:"POST",
+        body:new URLSearchParams({
+          action:"log",
+          is:s.is,
+          transaction:s.transaction,
+          name:s.name,
+          itemNo:s.itemNo,
+          description:s.description,
+          user:currentUser
+        })
+      })
+    }catch(err){
+      console.error("Failed to log:", s)
+    }
+  }
+  document.getElementById("confirmation").innerText=`✅ Logged ${sessionScans.length} items`
+  // Reset session
+  sessionScans=[]
+  document.getElementById("sessionScans").style.display="none"
+  document.getElementById("sessionButtons").style.display="none"
+  document.getElementById("reader").style.display="block"
+  document.getElementById("startScanner").style.display="inline-block"
+  document.getElementById("scanned").innerText="None"
+})
 </script>
 
 </body>
