@@ -1,591 +1,401 @@
 <!DOCTYPE html>
 <html>
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LEGA-Z Inventory</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-
 body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-text-align:center;
-padding:20px;
+  font-family:'Arial',sans-serif;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+  padding:20px;
 }
-
 h1{
-font-size:48px;
-margin-bottom:0;
-letter-spacing:3px;
+  font-size:48px;
+  margin-bottom:0;
+  letter-spacing:3px;
+  background: linear-gradient(45deg, gold, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-
 h2{
-margin-top:5px;
-font-weight:400;
+  margin-top:5px;
+  font-weight: bold;
+  font-size:18px;
 }
-
 .small{
-font-size:12px;
-opacity:.7;
+  font-size:12px;
+  opacity:.7;
+  background: linear-gradient(45deg, gold, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-
 .container{
-max-width:420px;
-margin:auto;
+  max-width:480px;
+  margin:auto;
 }
-
 .row{
-display:flex;
-justify-content:space-between;
-gap:10px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
 }
-
 select,input,button{
-padding:10px;
-margin:5px;
-border-radius:6px;
-border:none;
-width:100%;
+  padding:10px;
+  margin:5px;
+  border-radius:6px;
+  border:none;
+  width:100%;
 }
-
 button{
-background:#06b6d4;
-color:white;
-font-weight:bold;
-cursor:pointer;
+  background:#06b6d4;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.3s;
 }
-
 button:hover{
-background:#0891b2;
+  background:#0891b2;
 }
-
 #reader{
-width:300px;
-margin:auto;
+  width:100%;
+  max-width:320px;
+  margin:auto;
 }
-
 .spinner{
-border:4px solid #f3f3f3;
-border-top:4px solid #06b6d4;
-border-radius:50%;
-width:30px;
-height:30px;
-animation:spin 1s linear infinite;
-display:inline-block;
+  border:4px solid #f3f3f3;
+  border-top:4px solid #06b6d4;
+  border-radius:50%;
+  width:30px;
+  height:30px;
+  animation:spin 1s linear infinite;
+  display:inline-block;
 }
-
 @keyframes spin{
-0%{transform:rotate(0deg)}
-100%{transform:rotate(360deg)}
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
 }
-
 table{
-border-collapse:collapse;
-margin:10px auto;
-width:100%;
+  border-collapse:collapse;
+  margin:10px auto;
+  width:100%;
 }
-
 th,td{
-border:1px solid #334155;
-padding:6px;
+  border:1px solid #334155;
+  padding:6px;
+  text-align:center;
 }
-
 tr.selected{
-background:#334155;
+  background:#334155;
 }
-
 #nameSuggestions{
-background:#1e293b;
-border:1px solid #334155;
-max-height:150px;
-overflow:auto;
+  background:#1e293b;
+  border:1px solid #334155;
+  max-height:150px;
+  overflow:auto;
 }
-
 #nameSuggestions div{
-padding:5px;
-cursor:pointer;
+  padding:5px;
+  cursor:pointer;
 }
-
-#nameSuggestions div:hover{
-background:#334155;
+#nameSuggestions div:hover, #nameSuggestions div.active{
+  background:#334155;
 }
-
 .counter{
-margin:10px;
-font-weight:bold;
-color:#22c55e;
+  margin:10px;
+  font-weight:bold;
+  color:#22c55e;
 }
-
+.quantityInput{
+  width:60px;
+  text-align:center;
+  border-radius:4px;
+  border:1px solid #334155;
+  background:#0f172a;
+  color:white;
+}
 </style>
-
 </head>
-
 <body>
 
 <!-- LOGIN PAGE -->
-
 <div id="loginPage" class="container">
-
-<h1>LEGA - Z</h1>
-
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
-
-<div class="small">by YURI</div>
-
-<br>
-
-<input id="username" placeholder="Username">
-
-<input id="password" type="password" placeholder="Password">
-
-<button onclick="login()">Sign In</button>
-
-<div id="loginSpinner"></div>
-
-<p id="loginMsg"></p>
-
+  <h1>LEGA - Z</h1>
+  <h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
+  <div class="small">by YURI</div>
+  <br>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Sign In</button>
+  <div id="loginSpinner"></div>
+  <p id="loginMsg"></p>
 </div>
-
-
 
 <!-- MAIN SYSTEM -->
-
 <div id="scannerPage" class="container" style="display:none">
+  <h2 style="font-weight:bold;font-size:18px;">SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
 
-<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
+  <div class="row">
+    <div style="flex:1">
+      <label>IS</label>
+      <select id="isDropdown"></select>
+    </div>
+    <div style="flex:1">
+      <label>Transaction</label>
+      <select id="transaction">
+        <option>RECEIVED</option>
+        <option>ISSUED</option>
+        <option>TRANSFERRED</option>
+        <option>INVENTORY COUNT</option>
+        <option>RETURNED</option>
+      </select>
+    </div>
+  </div>
 
-<div class="row">
+  <label>Name</label>
+  <input id="nameInput" placeholder="Type name">
+  <div id="nameSuggestions"></div>
 
-<div style="flex:1">
-<label>IS</label>
-<select id="isDropdown"></select>
+  <button id="startScanner">Start Scanning</button>
+  <button id="doneBtn" style="display:none">DONE</button>
+
+  <div id="processSpinner"></div>
+  <div id="reader"></div>
+
+  <div class="counter">Scanned Items: <span id="scanCount">0</span></div>
+  <p>Last Scan: <span id="scanned">None</span></p>
+
+  <!-- PREVIEW TABLE -->
+  <div id="sessionPreview" style="display:none">
+    <h3>Session Preview</h3>
+    <table id="previewTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Item No</th>
+          <th>Description</th>
+          <th>Quantity</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="sessionButtons" style="display:none">
+    <button id="deleteRowBtn">DELETE</button>
+    <button id="backBtn">BACK</button>
+    <button id="confirmBtn">CONFIRM</button>
+  </div>
+
+  <button id="doneAfterConfirmBtn" style="display:none">DONE</button>
+
+  <p id="confirmation"></p>
 </div>
-
-<div style="flex:1">
-<label>Transaction</label>
-<select id="transaction">
-<option>RECEIVED</option>
-<option>ISSUED</option>
-<option>TRANSFERRED</option>
-<option>INVENTORY COUNT</option>
-<option>RETURNED</option>
-</select>
-</div>
-
-</div>
-
-<label>Name</label>
-
-<input id="nameInput" placeholder="Type name">
-
-<div id="nameSuggestions"></div>
-
-<button id="startScanner">Start Scanning</button>
-
-<button id="doneBtn" style="display:none">DONE</button>
-
-<div id="processSpinner"></div>
-
-<div id="reader"></div>
-
-<div class="counter">
-Scanned Items: <span id="scanCount">0</span>
-</div>
-
-<p>Last Scan: <span id="scanned">None</span></p>
-
-
-<!-- PREVIEW -->
-
-<div id="sessionPreview" style="display:none">
-
-<h3>Scanned Items</h3>
-
-<table id="previewTable">
-
-<thead>
-
-<tr>
-<th>Date</th>
-<th>IS</th>
-<th>Transaction</th>
-<th>Name</th>
-<th>Item</th>
-<th>Description</th>
-<th>User</th>
-</tr>
-
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-<button id="deleteRowBtn">Delete Selected Row</button>
-
-</div>
-
-
-<div id="sessionButtons" style="display:none">
-
-<button id="backBtn">BACK</button>
-
-<button id="confirmBtn">CONFIRM</button>
-
-</div>
-
-<p id="confirmation"></p>
-
-</div>
-
 
 <script>
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec";
 
-const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
+let currentUser="", suppliers=[], personnel=[], scanner, scanning=true;
+let sessionScans=[], selectedRowIndex=null;
 
-let currentUser=""
-let suppliers=[]
-let personnel=[]
-let scanner
-let scanning=true
-let sessionScans=[]
-let selectedRowIndex=null
-
-// load cached scans if offline
-const cached=localStorage.getItem("offlineScans")
-if(cached){
-sessionScans=JSON.parse(cached)
-}
-
+// load offline cache
+const cached = localStorage.getItem("offlineScans");
+if(cached) sessionScans = JSON.parse(cached);
+document.getElementById("scanCount").innerText=sessionScans.length;
 
 // beep
 function beep(){
-const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
-audio.play()
+  new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
 }
-
 
 // login
-
 async function login(){
-
-document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
-
-try{
-
-const res=await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({
-action:"login",
-username:username.value,
-password:password.value
-})
-})
-
-const data=await res.json()
-
-document.getElementById("loginSpinner").innerHTML=""
-
-if(data.status==="success"){
-
-currentUser=username.value
-
-loginPage.style.display="none"
-
-scannerPage.style.display="block"
-
-loadDropdowns()
-
-}else{
-
-loginMsg.innerText="Invalid login"
-
+  document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>';
+  try{
+    const res = await fetch(WEBAPP_URL,{
+      method:"POST",
+      body:new URLSearchParams({
+        action:"login",
+        username:username.value,
+        password:password.value
+      })
+    });
+    const data = await res.json();
+    document.getElementById("loginSpinner").innerHTML="";
+    if(data.status==="success"){
+      currentUser = username.value;
+      loginPage.style.display="none";
+      scannerPage.style.display="block";
+      loadDropdowns();
+    } else {
+      loginMsg.innerText="Invalid login";
+    }
+  } catch {
+    loginMsg.innerText="Connection error";
+    document.getElementById("loginSpinner").innerHTML="";
+  }
 }
-
-}catch{
-
-loginMsg.innerText="Connection error"
-
-}
-
-}
-
-
 
 // dropdowns
-
 async function loadDropdowns(){
-
-const res=await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({action:"getDropdowns"})
-})
-
-const data=await res.json()
-
-suppliers=data.suppliers
-personnel=data.personnel
-
-data.isList.forEach(v=>{
-let o=document.createElement("option")
-o.text=v
-isDropdown.add(o)
-})
-
-updateNames()
-
+  const res = await fetch(WEBAPP_URL,{
+    method:"POST",
+    body:new URLSearchParams({action:"getDropdowns"})
+  });
+  const data = await res.json();
+  suppliers = data.suppliers;
+  personnel = data.personnel;
+  data.isList.forEach(v=>{
+    let o=document.createElement("option");
+    o.text=v;
+    isDropdown.add(o);
+  });
+  updateNames();
 }
 
-
-// autocomplete
-
+// fuzzy autocomplete + arrow navigation + enter select
 function setupAutocomplete(list){
-
-nameInput.oninput=function(){
-
-const value=this.value.toLowerCase()
-
-nameSuggestions.innerHTML=""
-
-if(!value)return
-
-list.filter(n=>n.toLowerCase().includes(value)).slice(0,10).forEach(name=>{
-
-const div=document.createElement("div")
-
-div.textContent=name
-
-div.onclick=()=>{
-nameInput.value=name
-nameSuggestions.innerHTML=""
+  let activeIndex=-1;
+  nameInput.oninput=function(){
+    const val=this.value.toLowerCase();
+    nameSuggestions.innerHTML="";
+    if(!val) return;
+    const filtered = list.filter(n=>n.toLowerCase().includes(val)).slice(0,10);
+    filtered.forEach((name,i)=>{
+      const div=document.createElement("div");
+      div.textContent=name;
+      div.onclick=()=>{nameInput.value=name; nameSuggestions.innerHTML="";}
+      if(i===activeIndex) div.classList.add("active");
+      nameSuggestions.appendChild(div);
+    });
+  }
+  nameInput.onkeydown=function(e){
+    const divs = nameSuggestions.querySelectorAll("div");
+    if(e.key==="ArrowDown"){ activeIndex = (activeIndex+1)%divs.length; e.preventDefault();}
+    if(e.key==="ArrowUp"){ activeIndex = (activeIndex-1+divs.length)%divs.length; e.preventDefault();}
+    if(e.key==="Enter" && divs[activeIndex]){ nameInput.value = divs[activeIndex].textContent; nameSuggestions.innerHTML=""; e.preventDefault();}
+    divs.forEach((d,i)=>d.classList.toggle("active",i===activeIndex));
+  }
+  document.addEventListener("click",e=>{if(!nameSuggestions.contains(e.target)&&e.target!==nameInput) nameSuggestions.innerHTML="";});
 }
 
-nameSuggestions.appendChild(div)
-
-})
-
-}
-
-}
-
-
-transaction.onchange=updateNames
-
+transaction.onchange=updateNames;
 function updateNames(){
-
-let list=[]
-
-if(transaction.value==="RECEIVED") list=suppliers
-if(transaction.value==="ISSUED") list=personnel
-
-setupAutocomplete(list)
-
+  let list=[];
+  if(transaction.value==="RECEIVED") list=suppliers;
+  else if(transaction.value==="ISSUED") list=personnel;
+  setupAutocomplete(list);
 }
 
-
-
-// scanner start
-
+// start scanner
 startScanner.onclick=function(){
-
-startScanner.style.display="none"
-
-doneBtn.style.display="inline-block"
-
-scanner=new Html5Qrcode("reader")
-
-scanner.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-scanSuccess
-)
-
+  startScanner.style.display="none";
+  doneBtn.style.display="inline-block";
+  scanner=new Html5Qrcode("reader");
+  scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess);
 }
-
-
 
 // scan success
-
 function scanSuccess(decodedText){
-
-if(!scanning)return
-
-scanning=false
-
-beep()
-
-scanned.innerText=decodedText
-
-const[itemNo,description]=decodedText.split("|")
-
-const scan={
-
-date:new Date().toLocaleString(),
-is:isDropdown.value,
-transaction:transaction.value,
-name:nameInput.value,
-itemNo,
-description,
-user:currentUser
-
+  if(!scanning) return;
+  scanning=false;
+  beep();
+  scanned.innerText=decodedText;
+  const [itemNo,description] = decodedText.split("|");
+  const existing = sessionScans.find(s=>s.itemNo===itemNo);
+  if(existing){ existing.quantity=parseFloat(existing.quantity)+1; }
+  else{ sessionScans.push({date:new Date().toLocaleString(), itemNo, description, quantity:1.00}); }
+  localStorage.setItem("offlineScans",JSON.stringify(sessionScans));
+  renderTable();
+  scanCount.innerText=sessionScans.length;
+  setTimeout(()=>{scanning=true;},1000);
 }
 
-sessionScans.push(scan)
-
-localStorage.setItem("offlineScans",JSON.stringify(sessionScans))
-
-renderTable()
-
-scanCount.innerText=sessionScans.length
-
-setTimeout(()=>{
-
-scanning=true
-
-},1000)
-
-}
-
-
-
-// table render
-
+// render table with editable quantity
 function renderTable(){
-
-const tbody=document.querySelector("#previewTable tbody")
-
-tbody.innerHTML=""
-
-sessionScans.forEach((s,i)=>{
-
-const tr=document.createElement("tr")
-
-tr.innerHTML=`
-<td>${s.date}</td>
-<td>${s.is}</td>
-<td>${s.transaction}</td>
-<td>${s.name}</td>
-<td>${s.itemNo}</td>
-<td>${s.description}</td>
-<td>${s.user}</td>
-`
-
-tr.onclick=function(){
-
-document.querySelectorAll("#previewTable tr").forEach(r=>r.classList.remove("selected"))
-
-tr.classList.add("selected")
-
-selectedRowIndex=i
-
+  const tbody=document.querySelector("#previewTable tbody");
+  tbody.innerHTML="";
+  sessionScans.forEach((s,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${s.date}</td>
+      <td>${s.itemNo}</td>
+      <td>${s.description}</td>
+      <td><input class="quantityInput" type="number" value="${s.quantity.toFixed(2)}" step="0.01" onchange="updateQuantity(${i},this.value)"></td>
+    `;
+    tr.onclick=function(){ document.querySelectorAll("#previewTable tr").forEach(r=>r.classList.remove("selected")); tr.classList.add("selected"); selectedRowIndex=i;}
+    tbody.appendChild(tr);
+  });
 }
 
-tbody.appendChild(tr)
+function updateQuantity(index,value){ sessionScans[index].quantity=parseFloat(value); localStorage.setItem("offlineScans",JSON.stringify(sessionScans)); }
 
-})
-
-}
-
-
-
-// done
-
+// done button
 doneBtn.onclick=function(){
-
-processSpinner.innerHTML='<span class="spinner"></span>'
-
-scanner.stop().then(()=>{
-
-processSpinner.innerHTML=""
-
-reader.style.display="none"
-
-sessionPreview.style.display="block"
-
-sessionButtons.style.display="block"
-
-doneBtn.style.display="none"
-
-})
-
+  processSpinner.innerHTML='<span class="spinner"></span>';
+  scanner.stop().then(()=>{
+    processSpinner.innerHTML="";
+    reader.style.display="none";
+    sessionPreview.style.display="block";
+    sessionButtons.style.display="block";
+    doneBtn.style.display="none";
+  });
 }
 
-
-
-// back
-
+// back button
 backBtn.onclick=function(){
-
-reader.style.display="block"
-
-sessionPreview.style.display="none"
-
-sessionButtons.style.display="none"
-
-startScanner.style.display="inline-block"
-
+  reader.style.display="block";
+  sessionPreview.style.display="none";
+  sessionButtons.style.display="none";
+  startScanner.style.display="inline-block";
 }
 
-
-
-// confirm
-
+// confirm button
 confirmBtn.onclick=async function(){
-
-processSpinner.innerHTML='<span class="spinner"></span>'
-
-for(const s of sessionScans){
-
-try{
-
-await fetch(WEBAPP_URL,{
-method:"POST",
-body:new URLSearchParams({
-action:"log",
-is:s.is,
-transaction:s.transaction,
-name:s.name,
-itemNo:s.itemNo,
-description:s.description,
-user:s.user
-})
-})
-
-}catch{}
-
+  processSpinner.innerHTML='<span class="spinner"></span>';
+  for(const s of sessionScans){
+    try{
+      await fetch(WEBAPP_URL,{
+        method:"POST",
+        body:new URLSearchParams({
+          action:"log",
+          is:isDropdown.value,
+          transaction:transaction.value,
+          name:nameInput.value,
+          itemNo:s.itemNo,
+          description:s.description,
+          quantity:s.quantity,
+          user:currentUser
+        })
+      });
+    }catch(err){}
+  }
+  processSpinner.innerHTML="";
+  confirmation.innerText=`Logged ${sessionScans.length} items`;
+  doneAfterConfirmBtn.style.display="inline-block";
 }
-
-processSpinner.innerHTML=""
-
-confirmation.innerText="Logged "+sessionScans.length+" items"
-
-localStorage.removeItem("offlineScans")
-
-}
-
-
 
 // delete row
-
 deleteRowBtn.onclick=function(){
-
-if(selectedRowIndex===null)return
-
-sessionScans.splice(selectedRowIndex,1)
-
-localStorage.setItem("offlineScans",JSON.stringify(sessionScans))
-
-renderTable()
-
-scanCount.innerText=sessionScans.length
-
+  if(selectedRowIndex===null) return;
+  sessionScans.splice(selectedRowIndex,1);
+  localStorage.setItem("offlineScans",JSON.stringify(sessionScans));
+  renderTable();
+  scanCount.innerText=sessionScans.length;
 }
 
+// DONE after confirm
+doneAfterConfirmBtn.onclick=function(){
+  reader.style.display="block";
+  sessionPreview.style.display="none";
+  sessionButtons.style.display="none";
+  doneAfterConfirmBtn.style.display="none";
+  startScanner.style.display="inline-block";
+  confirmation.innerText="";
+}
 </script>
-
 </body>
 </html>
