@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inventory QR Scanner - Session Preview</title>
+<title>Inventory QR Scanner</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -12,24 +12,8 @@ body{font-family:Arial;text-align:center;padding:20px}
 input,select,button{padding:10px;margin:5px}
 #nameSuggestions{border:1px solid #ccc; max-height:150px; overflow-y:auto; text-align:left; margin:auto; width:300px}
 #confirmation{color:green; font-weight:bold; margin-top:10px}
-.spinner{
-  border:4px solid #f3f3f3;
-  border-top:4px solid #3498db;
-  border-radius:50%;
-  width:30px;
-  height:30px;
-  animation:spin 1s linear infinite;
-  display:inline-block;
-  margin-left:10px;
-}
-@keyframes spin{
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-table{border-collapse:collapse; margin:10px auto; width:90%}
-th,td{border:1px solid #ccc; padding:5px; text-align:left}
-tr.selected{background-color:#ffd;}
 </style>
+
 </head>
 
 <body>
@@ -40,7 +24,6 @@ tr.selected{background-color:#ffd;}
 <input id="username" placeholder="Username"><br>
 <input id="password" type="password" placeholder="Password"><br>
 <button onclick="login()">Sign In</button>
-<span id="loginSpinner"></span>
 <p id="loginMsg"></p>
 </div>
 
@@ -64,87 +47,57 @@ tr.selected{background-color:#ffd;}
 <input id="nameInput" type="text" placeholder="Type name">
 <div id="nameSuggestions"></div>
 
-<button id="startScanner">Start Scanning</button>
-<button id="doneBtn" style="display:none">DONE</button>
+<button id="startScanner">Start Scanner</button>
 
 <div id="reader"></div>
 
 <p>Last Scan: <span id="scanned">None</span></p>
-
-<!-- Session preview table -->
-<div id="sessionPreview" style="display:none">
-  <h3>Scanned Items Preview</h3>
-  <table id="previewTable">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>IS</th>
-        <th>Transaction</th>
-        <th>Name</th>
-        <th>Item No.</th>
-        <th>Description</th>
-        <th>User</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <button id="deleteRowBtn">Delete Selected Row</button>
-</div>
-
-<div id="sessionButtons" style="display:none">
-  <button id="backBtn">BACK</button>
-  <button id="confirmBtn">CONFIRM</button>
-  <span id="actionSpinner"></span>
-</div>
-
 <p id="confirmation"></p>
 </div>
 
 <script>
 const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec"
+
 let currentUser=""
 let suppliers=[]
 let personnel=[]
 let scanning=true
-let sessionScans=[]
-let selectedRowIndex=null
 
-// BEEP FUNCTION
+// ---- BEEP FUNCTION ----
 function beep(){
   const audio=new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
   audio.play()
 }
 
-// LOGIN FUNCTION
+// ---- LOGIN FUNCTION ----
 async function login(){
   const username=document.getElementById("username").value
   const password=document.getElementById("password").value
-  document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
   try{
     const res=await fetch(WEBAPP_URL,{
       method:"POST",
-      body:new URLSearchParams({action:"login", username, password})
+      body:new URLSearchParams({
+        action:"login",
+        username:username,
+        password:password
+      })
     })
     const data=await res.json()
     if(data.status==="success"){
       currentUser=username
       document.getElementById("loginPage").style.display="none"
       document.getElementById("scannerPage").style.display="block"
-      await loadDropdowns()
-      document.getElementById("loginSpinner").innerHTML=""
-    } else {
+      loadDropdowns()
+    }else{
       document.getElementById("loginMsg").innerText="Invalid login"
-      document.getElementById("loginSpinner").innerHTML=""
     }
   }catch(err){
     document.getElementById("loginMsg").innerText="Connection error"
-    document.getElementById("loginSpinner").innerHTML=""
   }
 }
 
-// LOAD DROPDOWNS
+// ---- LOAD DROPDOWNS ----
 async function loadDropdowns(){
-  document.getElementById("loginSpinner").innerHTML='<span class="spinner"></span>'
   const res=await fetch(WEBAPP_URL,{
     method:"POST",
     body:new URLSearchParams({action:"getDropdowns"})
@@ -153,17 +106,15 @@ async function loadDropdowns(){
   suppliers=data.suppliers
   personnel=data.personnel
   const isDrop=document.getElementById("isDropdown")
-  isDrop.innerHTML=""
   data.isList.forEach(v=>{
     let opt=document.createElement("option")
     opt.text=v
     isDrop.add(opt)
   })
   updateNames()
-  document.getElementById("loginSpinner").innerHTML=""
 }
 
-// AUTOCOMPLETE
+// ---- AUTOCOMPLETE FUNCTION ----
 function setupAutocomplete(list){
   const input=document.getElementById("nameInput")
   const suggestions=document.getElementById("nameSuggestions")
@@ -191,7 +142,7 @@ function setupAutocomplete(list){
   })
 }
 
-// UPDATE NAMES BASED ON TRANSACTION
+// ---- UPDATE NAMES BASED ON TRANSACTION ----
 document.getElementById("transaction").addEventListener("change",updateNames)
 function updateNames(){
   const transaction=document.getElementById("transaction").value
@@ -201,112 +152,44 @@ function updateNames(){
   setupAutocomplete(list)
 }
 
-// START SCANNER
+// ---- START QR SCANNER ----
 document.getElementById("startScanner").addEventListener("click",()=>{
-  document.getElementById("startScanner").style.display="none"
-  document.getElementById("doneBtn").style.display="inline-block"
-  scanner=new Html5Qrcode("reader")
-  scanner.start({facingMode:"environment"},{fps:10,qrbox:250},scanSuccess)
+  const scanner=new Html5Qrcode("reader")
+  scanner.start(
+    {facingMode:"environment"},
+    {fps:10,qrbox:250},
+    scanSuccess
+  )
 })
 
-// SCAN SUCCESS
-function scanSuccess(decodedText){
+// ---- SCAN SUCCESS ----
+async function scanSuccess(decodedText){
   if(!scanning) return
   scanning=false
   beep()
   document.getElementById("scanned").innerText=decodedText
   const [itemNo,description]=decodedText.split("|")
-  const scanData={
-    date: new Date().toLocaleString(),
+  const payload={
+    action:"log",
     is:document.getElementById("isDropdown").value,
     transaction:document.getElementById("transaction").value,
     name:document.getElementById("nameInput").value,
-    itemNo,
-    description,
+    itemNo:itemNo,
+    description:description,
     user:currentUser
   }
-  sessionScans.push(scanData)
-  renderPreviewTable()
-  setTimeout(()=>{scanning=true},1000) // 1 second delay
-}
-
-// RENDER PREVIEW TABLE WITH ROW SELECTION
-function renderPreviewTable(){
-  const tbody=document.querySelector("#previewTable tbody")
-  tbody.innerHTML=""
-  sessionScans.forEach((s,i)=>{
-    const tr=document.createElement("tr")
-    tr.innerHTML=`<td>${s.date}</td><td>${s.is}</td><td>${s.transaction}</td><td>${s.name}</td><td>${s.itemNo}</td><td>${s.description}</td><td>${s.user}</td>`
-    tr.addEventListener("click",()=>{
-      tbody.querySelectorAll("tr").forEach(r=>r.classList.remove("selected"))
-      tr.classList.add("selected")
-      selectedRowIndex=i
+  try{
+    await fetch(WEBAPP_URL,{
+      method:"POST",
+      body:new URLSearchParams(payload)
     })
-    tbody.appendChild(tr)
-  })
-}
-
-// DONE BUTTON
-document.getElementById("doneBtn").addEventListener("click",()=>{
-  document.getElementById("actionSpinner").innerHTML='<span class="spinner"></span>'
-  scanner.stop().then(()=>{
-    document.getElementById("reader").style.display="none"
-    document.getElementById("sessionPreview").style.display="block"
-    document.getElementById("sessionButtons").style.display="block"
-    document.getElementById("doneBtn").style.display="none"
-    document.getElementById("actionSpinner").innerHTML=""
-  })
-})
-
-// BACK BUTTON
-document.getElementById("backBtn").addEventListener("click",()=>{
-  document.getElementById("reader").style.display="block"
-  document.getElementById("sessionPreview").style.display="none"
-  document.getElementById("sessionButtons").style.display="none"
-  document.getElementById("startScanner").style.display="inline-block"
-  document.getElementById("scanned").innerText="None"
-})
-
-// CONFIRM BUTTON
-document.getElementById("confirmBtn").addEventListener("click", async()=>{
-  document.getElementById("actionSpinner").innerHTML='<span class="spinner"></span>'
-  for(const s of sessionScans){
-    try{
-      await fetch(WEBAPP_URL,{
-        method:"POST",
-        body:new URLSearchParams({
-          action:"log",
-          is:s.is,
-          transaction:s.transaction,
-          name:s.name,
-          itemNo:s.itemNo,
-          description:s.description,
-          user:s.user
-        })
-      })
-    }catch(err){
-      console.error("Failed to log:", s)
-    }
+    document.getElementById("confirmation").innerText="✅ Logged "+itemNo
+  }catch(err){
+    document.getElementById("confirmation").innerText="❌ Failed to log transaction"
   }
-  document.getElementById("confirmation").innerText=`✅ Logged ${sessionScans.length} items`
-  sessionScans=[]
-  selectedRowIndex=null
-  document.getElementById("sessionPreview").style.display="none"
-  document.getElementById("sessionButtons").style.display="none"
-  document.getElementById("reader").style.display="block"
-  document.getElementById("startScanner").style.display="inline-block"
-  document.getElementById("scanned").innerText="None"
-  document.getElementById("actionSpinner").innerHTML=""
-})
-
-// DELETE SELECTED ROW
-document.getElementById("deleteRowBtn").addEventListener("click",()=>{
-  if(selectedRowIndex===null) return
-  sessionScans.splice(selectedRowIndex,1)
-  selectedRowIndex=null
-  renderPreviewTable()
-})
-
+  // Continue scanning after 0.5 second
+  setTimeout(()=>{scanning=true},500)
+}
 </script>
 
 </body>
