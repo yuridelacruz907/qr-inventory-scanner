@@ -2,180 +2,135 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LEGA-Z Inventory</title>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body{font-family:Arial;background:#0f172a;color:white;text-align:center;padding:20px;}
-h1{font-size:48px;background:linear-gradient(45deg,gold,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.container{max-width:480px;margin:auto;}
-input,select,button{padding:10px;margin:5px;border-radius:6px;border:none;width:100%;}
-button{background:#06b6d4;color:white;font-weight:bold;cursor:pointer;}
-button:hover{background:#0891b2;}
-.spinner{border:4px solid #f3f3f3;border-top:4px solid #06b6d4;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite;}
-@keyframes spin{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-table{border-collapse:collapse;width:100%;}
-th,td{border:1px solid #334155;padding:6px;}
-tr.selected{background:#334155;}
+body{background:#0f172a;color:white;font-family:Arial;text-align:center}
+button{padding:10px;margin:5px;background:#06b6d4;color:white;border:none;border-radius:6px}
+button:disabled{background:#555}
+.whiteTable{background:white;color:black}
+.spinner{border:4px solid #ccc;border-top:4px solid #06b6d4;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
 </style>
 </head>
 
 <body>
 
-<div id="loginPage">
+<div id="login">
 <h1>LEGA - Z</h1>
-<input id="username" placeholder="Username">
+<input id="username">
 <input id="password" type="password">
-<button onclick="login()">Sign In</button>
-<div id="loginSpinner"></div>
-<p id="loginMsg"></p>
+<button onclick="login()">Login</button>
+<div id="spin"></div>
 </div>
 
-<div id="scannerPage" style="display:none">
-<select id="isDropdown"></select>
-<select id="transaction">
+<div id="menu" style="display:none">
+<button onclick="openModule('check')">CHECK ITEM</button>
+<button onclick="openModule('inventory')">INVENTORY</button>
+<button onclick="openModule('transaction')">TRANSACTIONS</button>
+<button onclick="openModule('count')">PHYSICAL COUNT</button>
+<button onclick="openModule('yearend')">YEAR-END</button>
+</div>
+
+<div id="main" style="display:none">
+<select id="is"></select>
+<select id="type" onchange="resetName()">
+<option value="">SELECT TYPE</option>
 <option>RECEIVED</option>
 <option>ISSUED</option>
 </select>
 
-<input id="nameInput" placeholder="Name">
+<input id="name">
 
-<button id="startScanner">Start Scanning</button>
-<button id="doneBtn" style="display:none">DONE</button>
-
+<button id="start" disabled onclick="startScan()">START SCAN</button>
 <div id="reader"></div>
 
-<div id="sessionPreview" style="display:none">
-<table id="previewTable">
-<thead>
-<tr><th>Date</th><th>Item</th><th>Description</th><th>Qty</th></tr>
-</thead>
-<tbody></tbody>
-</table>
+<table id="table" class="whiteTable"></table>
 
-<button id="deleteRowBtn">DELETE</button>
-<button id="backBtn">BACK</button>
-<button id="confirmBtn">CONFIRM</button>
-</div>
-
-<button id="backAfterConfirm" style="display:none">BACK</button>
-
-<p id="confirmation"></p>
-
+<button id="confirm" onclick="confirm()" style="display:none">CONFIRM</button>
+<button id="backOnly" onclick="resetAll()" style="display:none">BACK</button>
 </div>
 
 <script>
-const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec";
+const URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec";
 
-let scanner, scanning=true, sessionScans=[], selectedRowIndex=null, currentUser="";
+let scans=[],scanner,isSubmitting=false;
 
-function beep(){
- new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
-}
-
-async function login(){
- loginSpinner.innerHTML='<div class="spinner"></div>';
- const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({
-  action:"login",username:username.value,password:password.value
- })});
- const data=await res.json();
- loginSpinner.innerHTML="";
- if(data.status==="success"){
-  loginPage.style.display="none";
-  scannerPage.style.display="block";
-  currentUser=username.value;
- }
-}
-
-startScanner.onclick=function(){
- startScanner.style.display="none";
- doneBtn.style.display="inline-block";
- scanner=new Html5Qrcode("reader");
- scanner.start({facingMode:"environment"},{fps:10},scanSuccess);
-}
-
-function scanSuccess(text){
- if(!scanning)return;
- scanning=false;
- beep();
-
- const [item,desc]=text.split("|");
-
- let existing=sessionScans.find(s=>s.item===item);
- if(existing){existing.qty++;}
- else sessionScans.push({date:new Date().toLocaleString(),item,desc,qty:1});
-
- renderTable();
- setTimeout(()=>scanning=true,1000);
-}
-
-function renderTable(){
- const tbody=document.querySelector("#previewTable tbody");
- tbody.innerHTML="";
- sessionScans.forEach((s,i)=>{
-  const tr=document.createElement("tr");
-  tr.innerHTML=`
-   <td>${s.date}</td>
-   <td>${s.item}</td>
-   <td>${s.desc}</td>
-   <td contenteditable>${s.qty}</td>
-  `;
-  tr.onclick=()=>{selectedRowIndex=i;};
-  tbody.appendChild(tr);
+function login(){
+ spin.innerHTML='<div class="spinner"></div>';
+ fetch(URL,{method:"POST",body:new URLSearchParams({action:"login",username:username.value,password:password.value})})
+ .then(r=>r.json()).then(d=>{
+ spin.innerHTML="";
+ if(d.status==="success"){login.style.display="none";menu.style.display="block";}
  });
 }
 
-doneBtn.onclick=function(){
- scanner.stop();
- reader.style.display="none";
- sessionPreview.style.display="block";
- doneBtn.style.display="none";
+function openModule(m){
+ menu.style.display="none";
+ main.style.display="block";
 }
 
-deleteRowBtn.onclick=function(){
- if(selectedRowIndex===null)return;
- sessionScans.splice(selectedRowIndex,1);
- renderTable();
+function resetName(){ name.value=""; }
+
+[name,is,type].forEach(el=>el.oninput=checkReady);
+
+function checkReady(){
+ start.disabled=!(is.value && type.value && name.value);
 }
 
-backBtn.onclick=function(){
- sessionPreview.style.display="none";
- reader.style.display="block";
- startScanner.style.display="inline-block";
+function startScan(){
+ scanner=new Html5Qrcode("reader");
+ scanner.start({facingMode:"environment"},{fps:10},onScan);
 }
 
-confirmBtn.onclick=async function(){
- for(const s of sessionScans){
-  await fetch(WEBAPP_URL,{
+function onScan(txt){
+ new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+ let [item,desc]=txt.split("|");
+ let f=scans.find(s=>s.item==item);
+ if(f)f.qty++; else scans.push({item,desc,qty:1});
+ render();
+}
+
+function render(){
+ table.innerHTML="<tr><th>Item</th><th>Description</th><th>Qty</th></tr>";
+ scans.forEach(s=>{
+ table.innerHTML+=`<tr><td>${s.item}</td><td>${s.desc}</td><td>${s.qty}</td></tr>`;
+ });
+ confirm.style.display="block";
+}
+
+async function confirm(){
+ if(isSubmitting) return;
+ isSubmitting=true;
+
+ confirm.disabled=true;
+
+ for(const s of scans){
+  await fetch(URL,{
    method:"POST",
    body:new URLSearchParams({
     action:"log",
-    is:isDropdown.value,
-    transaction:transaction.value,
-    name:nameInput.value,
+    is:is.value,
+    transaction:type.value,
+    name:name.value,
     itemNo:s.item,
     description:s.desc,
-    quantity:s.qty,
-    user:currentUser
+    quantity:s.qty
    })
   });
  }
 
- confirmation.innerHTML=`<span style="color:#22c55e">✔ ${sessionScans.length} recorded</span>`;
+ scans=[];
 
- // RESET SESSION (IMPORTANT FIX)
- sessionScans=[];
-
- sessionPreview.style.display="none";
- backAfterConfirm.style.display="inline-block";
+ confirm.style.display="none";
+ backOnly.style.display="block";
+ table.innerHTML="";
 }
 
-backAfterConfirm.onclick=function(){
- confirmation.innerHTML="";
- backAfterConfirm.style.display="none";
- reader.style.display="block";
- startScanner.style.display="inline-block";
+function resetAll(){
+ main.style.display="none";
+ menu.style.display="block";
+ backOnly.style.display="none";
 }
 </script>
 
