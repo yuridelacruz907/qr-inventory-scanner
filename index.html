@@ -2,135 +2,269 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEGA-Z Inventory</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body{background:#0f172a;color:white;font-family:Arial;text-align:center}
-button{padding:10px;margin:5px;background:#06b6d4;color:white;border:none;border-radius:6px}
-button:disabled{background:#555}
-.whiteTable{background:white;color:black}
-.spinner{border:4px solid #ccc;border-top:4px solid #06b6d4;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite}
+body{font-family:Arial;background:#0f172a;color:white;text-align:center;padding:20px;}
+h1{font-size:42px;background:linear-gradient(45deg,gold,#ffd700);-webkit-background-clip:text;color:transparent;}
+h2{font-size:16px;margin-top:5px;}
+.small{color:silver;font-size:12px;margin-bottom:10px;}
+
+.container{max-width:480px;margin:auto;}
+
+button,input,select{
+padding:10px;margin:5px;border:none;border-radius:6px;width:100%;
+}
+
+button{background:#06b6d4;color:white;font-weight:bold;cursor:pointer;}
+button:disabled{background:#555;}
+
+#reader{max-width:320px;margin:auto;}
+
+.spinner{
+border:4px solid #ccc;
+border-top:4px solid #06b6d4;
+border-radius:50%;
+width:30px;height:30px;
+animation:spin 1s linear infinite;
+margin:auto;
+}
 @keyframes spin{100%{transform:rotate(360deg)}}
+
+#previewTable{
+background:white;
+color:black;
+width:100%;
+border-collapse:collapse;
+}
+#previewTable td,#previewTable th{
+border:1px solid #333;padding:5px;
+}
 </style>
 </head>
 
 <body>
 
-<div id="login">
+<!-- LOGIN -->
+<div id="loginPage" class="container">
 <h1>LEGA - Z</h1>
-<input id="username">
-<input id="password" type="password">
-<button onclick="login()">Login</button>
-<div id="spin"></div>
+<h2>SPGUG - LOD INVENTORY MANAGEMENT SYSTEM</h2>
+<div class="small">by YURI</div>
+
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Sign In</button>
+<div id="loginSpinner"></div>
+<p id="loginMsg"></p>
 </div>
 
-<div id="menu" style="display:none">
+<!-- OPTIONS -->
+<div id="optionPage" class="container" style="display:none">
 <button onclick="openModule('check')">CHECK ITEM</button>
 <button onclick="openModule('inventory')">INVENTORY</button>
 <button onclick="openModule('transaction')">TRANSACTIONS</button>
 <button onclick="openModule('count')">PHYSICAL COUNT</button>
-<button onclick="openModule('yearend')">YEAR-END</button>
+<button onclick="openModule('yearend')">YEAR-END INVENTORY</button>
 </div>
 
-<div id="main" style="display:none">
-<select id="is"></select>
-<select id="type" onchange="resetName()">
-<option value="">SELECT TYPE</option>
+<!-- MAIN -->
+<div id="mainPage" class="container" style="display:none">
+
+<div id="formArea">
+<select id="isDropdown"></select>
+
+<select id="transaction">
+<option value="">SELECT TRANSACTION</option>
 <option>RECEIVED</option>
 <option>ISSUED</option>
+<option>TRANSFERRED</option>
+<option>RETURNED</option>
+<option>INVENTORY COUNT</option>
 </select>
 
-<input id="name">
+<input id="nameInput" placeholder="Name">
 
-<button id="start" disabled onclick="startScan()">START SCAN</button>
+<button id="startScanner" disabled>START SCAN</button>
+</div>
+
 <div id="reader"></div>
 
-<table id="table" class="whiteTable"></table>
+<div id="spinnerArea"></div>
 
-<button id="confirm" onclick="confirm()" style="display:none">CONFIRM</button>
-<button id="backOnly" onclick="resetAll()" style="display:none">BACK</button>
+<!-- CHECK ITEM RESULT -->
+<div id="checkResult"></div>
+
+<!-- INVENTORY TABLE -->
+<table id="inventoryTable"></table>
+
+<!-- SESSION TABLE -->
+<div id="sessionArea" style="display:none">
+<table id="previewTable"></table>
+
+<button id="deleteRowBtn">DELETE</button>
+<button id="backBtn">BACK</button>
+<button id="confirmBtn">CONFIRM</button>
+</div>
+
+<button id="backOnlyBtn" style="display:none">BACK</button>
+
+<p id="confirmation"></p>
+
 </div>
 
 <script>
-const URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec";
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbwzZ3j9j2cf5r1VLIFkBv83zLVQJ6ozN2LTJI01KExrpgNjt8kBO67TD1-Y9PeqGEE/exec";
 
-let scans=[],scanner,isSubmitting=false;
+let currentUser="",scanner,scanning=true,isSubmitting=false;
+let sessionScans=[],currentModule="";
 
-function login(){
- spin.innerHTML='<div class="spinner"></div>';
- fetch(URL,{method:"POST",body:new URLSearchParams({action:"login",username:username.value,password:password.value})})
- .then(r=>r.json()).then(d=>{
- spin.innerHTML="";
- if(d.status==="success"){login.style.display="none";menu.style.display="block";}
- });
+// LOGIN
+async function login(){
+loginSpinner.innerHTML='<div class="spinner"></div>';
+const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({
+action:"login",username:username.value,password:password.value})});
+const data=await res.json();
+loginSpinner.innerHTML="";
+if(data.status==="success"){
+loginPage.style.display="none";
+optionPage.style.display="block";
+currentUser=username.value;
+loadDropdowns();
+}else loginMsg.innerText="Invalid login";
 }
 
+// LOAD DROPDOWNS
+async function loadDropdowns(){
+const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getDropdowns"})});
+const data=await res.json();
+data.isList.forEach(v=>{
+let o=document.createElement("option");o.text=v;isDropdown.add(o);
+});
+}
+
+// MODULE NAVIGATION
 function openModule(m){
- menu.style.display="none";
- main.style.display="block";
+currentModule=m;
+optionPage.style.display="none";
+mainPage.style.display="block";
+resetUI();
+
+if(m==="inventory") loadInventory();
 }
 
-function resetName(){ name.value=""; }
-
-[name,is,type].forEach(el=>el.oninput=checkReady);
-
+// VALIDATION
 function checkReady(){
- start.disabled=!(is.value && type.value && name.value);
+startScanner.disabled=!(isDropdown.value && transaction.value && nameInput.value);
 }
 
-function startScan(){
- scanner=new Html5Qrcode("reader");
- scanner.start({facingMode:"environment"},{fps:10},onScan);
+isDropdown.onchange=checkReady;
+transaction.onchange=function(){
+nameInput.value="";
+checkReady();
+};
+nameInput.oninput=checkReady;
+
+// START SCANNER
+startScanner.onclick=function(){
+scanner=new Html5Qrcode("reader");
+scanner.start({facingMode:"environment"},{fps:10,qrbox:250},onScan);
 }
 
-function onScan(txt){
- new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
- let [item,desc]=txt.split("|");
- let f=scans.find(s=>s.item==item);
- if(f)f.qty++; else scans.push({item,desc,qty:1});
- render();
+// SCAN
+function onScan(text){
+if(!scanning)return;
+scanning=false;
+new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+
+const [item,desc]=text.split("|");
+
+if(currentModule==="check"){
+fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getItem",itemNo:item})})
+.then(r=>r.json())
+.then(d=>{
+checkResult.innerHTML=`Item: ${item}<br>${d.desc}<br>Total: ${d.qty}`;
+});
+}else{
+let f=sessionScans.find(s=>s.item===item);
+if(f)f.qty++; else sessionScans.push({item,desc,qty:1});
+renderTable();
 }
 
-function render(){
- table.innerHTML="<tr><th>Item</th><th>Description</th><th>Qty</th></tr>";
- scans.forEach(s=>{
- table.innerHTML+=`<tr><td>${s.item}</td><td>${s.desc}</td><td>${s.qty}</td></tr>`;
- });
- confirm.style.display="block";
+setTimeout(()=>scanning=true,1000);
 }
 
-async function confirm(){
- if(isSubmitting) return;
- isSubmitting=true;
-
- confirm.disabled=true;
-
- for(const s of scans){
-  await fetch(URL,{
-   method:"POST",
-   body:new URLSearchParams({
-    action:"log",
-    is:is.value,
-    transaction:type.value,
-    name:name.value,
-    itemNo:s.item,
-    description:s.desc,
-    quantity:s.qty
-   })
-  });
- }
-
- scans=[];
-
- confirm.style.display="none";
- backOnly.style.display="block";
- table.innerHTML="";
+// RENDER SESSION
+function renderTable(){
+sessionArea.style.display="block";
+previewTable.innerHTML="<tr><th>Item</th><th>Description</th><th>Qty</th></tr>";
+sessionScans.forEach(s=>{
+previewTable.innerHTML+=`<tr><td>${s.item}</td><td>${s.desc}</td><td>${s.qty}</td></tr>`;
+});
 }
 
-function resetAll(){
- main.style.display="none";
- menu.style.display="block";
- backOnly.style.display="none";
+// CONFIRM
+confirmBtn.onclick=async function(){
+if(isSubmitting)return;
+isSubmitting=true;
+
+confirmBtn.disabled=true;
+
+for(const s of sessionScans){
+await fetch(WEBAPP_URL,{
+method:"POST",
+body:new URLSearchParams({
+action:"log",
+is:isDropdown.value,
+transaction:transaction.value,
+name:nameInput.value,
+itemNo:s.item,
+description:s.desc,
+quantity:s.qty,
+user:currentUser
+})
+});
+}
+
+sessionScans=[];
+previewTable.innerHTML="";
+sessionArea.style.display="none";
+
+confirmation.innerHTML='<span style="color:#22c55e">✔ Transactions Recorded</span>';
+
+backOnlyBtn.style.display="block";
+confirmBtn.style.display="none";
+}
+
+// BACK AFTER CONFIRM
+backOnlyBtn.onclick=function(){
+resetUI();
+mainPage.style.display="none";
+optionPage.style.display="block";
+}
+
+// INVENTORY
+async function loadInventory(){
+spinnerArea.innerHTML='<div class="spinner"></div>';
+const res=await fetch(WEBAPP_URL,{method:"POST",body:new URLSearchParams({action:"getInventory"})});
+const data=await res.json();
+spinnerArea.innerHTML="";
+inventoryTable.innerHTML="<tr><th>Item</th><th>Description</th><th>Qty</th></tr>";
+for(let k in data){
+inventoryTable.innerHTML+=`<tr><td>${k}</td><td>${data[k].desc}</td><td>${data[k].qty}</td></tr>`;
+}
+}
+
+// RESET UI
+function resetUI(){
+sessionScans=[];
+previewTable.innerHTML="";
+sessionArea.style.display="none";
+confirmation.innerHTML="";
+backOnlyBtn.style.display="none";
+confirmBtn.style.display="inline-block";
+checkResult.innerHTML="";
+inventoryTable.innerHTML="";
 }
 </script>
 
